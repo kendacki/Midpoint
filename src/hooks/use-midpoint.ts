@@ -53,6 +53,7 @@ const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as Address | undef
 const projectCreatedEvent = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount)"
 );
+const MIN_AMOY_PRIORITY_FEE = parseUnits("3", 9);
 const workSubmittedEvent = parseAbiItem("event WorkSubmitted(uint256 indexed projectId,string ipfsCid,uint256 reviewDeadline)");
 const projectDisputedEvent = parseAbiItem("event ProjectDisputed(uint256 indexed projectId,uint256 disputeStartTime)");
 const disputeDecayEvent = parseAbiItem(
@@ -289,7 +290,23 @@ export function useMidpoint() {
     value?: bigint;
   }) {
     if (!publicClient) throw new Error("Public client unavailable");
-    const hash = await writeContractAsync(args as never);
+    const feeEstimate = await publicClient.estimateFeesPerGas();
+    const txRequest: Record<string, unknown> = { ...args };
+
+    if (feeEstimate.maxFeePerGas || feeEstimate.maxPriorityFeePerGas) {
+      const maxPriorityFeePerGas =
+        feeEstimate.maxPriorityFeePerGas && feeEstimate.maxPriorityFeePerGas > MIN_AMOY_PRIORITY_FEE
+          ? feeEstimate.maxPriorityFeePerGas
+          : MIN_AMOY_PRIORITY_FEE;
+      const estimatedMaxFee = feeEstimate.maxFeePerGas ?? maxPriorityFeePerGas * 2n;
+
+      txRequest.maxPriorityFeePerGas = maxPriorityFeePerGas;
+      txRequest.maxFeePerGas = estimatedMaxFee > maxPriorityFeePerGas ? estimatedMaxFee : maxPriorityFeePerGas * 2n;
+    } else if (feeEstimate.gasPrice) {
+      txRequest.gasPrice = feeEstimate.gasPrice;
+    }
+
+    const hash = await writeContractAsync(txRequest as never);
     await publicClient.waitForTransactionReceipt({ hash });
     await refresh();
     return hash;
