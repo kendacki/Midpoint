@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Address } from "viem";
+import { MotionDecor } from "@/components/midpoint/motion-decor";
 import { TopNav } from "@/components/midpoint/top-nav";
 import { ProjectCard } from "@/components/midpoint/project-card";
 import { TransactionHistory } from "@/components/midpoint/transaction-history";
@@ -47,10 +48,11 @@ export default function ClientPage() {
 
   return (
     <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
+      <MotionDecor />
       <TopNav />
       <section className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-5">
-          <div className="glass-panel rounded-3xl p-6">
+          <div className="glass-panel interactive-lift reveal-up rounded-3xl p-6">
             <h1 className="font-montserrat text-3xl font-bold text-zinc-900">Client Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600">Create escrow deals and manage submissions, disputes, and payouts.</p>
             <div className="mt-5 space-y-3">
@@ -69,7 +71,7 @@ export default function ClientPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 reveal-up" style={{ animationDelay: "120ms" }}>
             {clientActiveEscrows.length ? (
               clientActiveEscrows.map((project) => (
                 <ProjectCard
@@ -91,12 +93,14 @@ export default function ClientPage() {
                 />
               ))
             ) : (
-              <div className="glass-panel rounded-2xl p-4 text-sm text-zinc-600">No active client projects yet.</div>
+              <div className="glass-panel interactive-lift rounded-2xl p-4 text-sm text-zinc-600">No active client projects yet.</div>
             )}
           </div>
         </div>
 
-        <TransactionHistory title="Client Transaction History" entries={midpoint.clientHistory} />
+        <div className="reveal-up" style={{ animationDelay: "180ms" }}>
+          <TransactionHistory title="Client Transaction History" entries={midpoint.clientHistory} />
+        </div>
       </section>
     </main>
   );

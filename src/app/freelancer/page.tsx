@@ -1,6 +1,7 @@
 "use client";
 
 import { TopNav } from "@/components/midpoint/top-nav";
+import { MotionDecor } from "@/components/midpoint/motion-decor";
 import { ProjectCard } from "@/components/midpoint/project-card";
 import { TransactionHistory } from "@/components/midpoint/transaction-history";
 import { useMidpoint } from "@/hooks/use-midpoint";
@@ -10,25 +11,26 @@ export default function FreelancerPage() {
 
   return (
     <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
+      <MotionDecor />
       <TopNav />
       <section className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-5">
-          <div className="glass-panel rounded-3xl p-6">
+          <div className="glass-panel interactive-lift reveal-up rounded-3xl p-6">
             <h1 className="font-montserrat text-3xl font-bold text-zinc-900">Freelancer Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600">Submit work, monitor review timers, and claim funds when eligible.</p>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="mini-glass">
+              <div className="mini-glass interactive-lift">
                 <p className="text-xs uppercase text-zinc-500">Pending Submissions</p>
                 <p className="text-2xl font-semibold text-zinc-900">{midpoint.pendingSubmissions.length}</p>
               </div>
-              <div className="mini-glass">
+              <div className="mini-glass interactive-lift">
                 <p className="text-xs uppercase text-zinc-500">Claimable Funds</p>
                 <p className="text-2xl font-semibold text-zinc-900">{midpoint.claimableFunds.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 reveal-up" style={{ animationDelay: "120ms" }}>
             {midpoint.freelancerProjects.length ? (
               midpoint.freelancerProjects.map((project) => (
                 <ProjectCard
@@ -50,12 +52,14 @@ export default function FreelancerPage() {
                 />
               ))
             ) : (
-              <div className="glass-panel rounded-2xl p-4 text-sm text-zinc-600">No freelancer projects yet.</div>
+              <div className="glass-panel interactive-lift rounded-2xl p-4 text-sm text-zinc-600">No freelancer projects yet.</div>
             )}
           </div>
         </div>
 
-        <TransactionHistory title="Freelancer Transaction History" entries={midpoint.freelancerHistory} />
+        <div className="reveal-up" style={{ animationDelay: "180ms" }}>
+          <TransactionHistory title="Freelancer Transaction History" entries={midpoint.freelancerHistory} />
+        </div>
       </section>
     </main>
   );

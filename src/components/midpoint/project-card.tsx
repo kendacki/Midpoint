@@ -90,7 +90,7 @@ export function ProjectCard({
   }, [nextBurnAt]);
 
   return (
-    <article className="glass-panel rounded-2xl p-4">
+    <article className="glass-panel interactive-lift rounded-2xl p-4">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-zinc-900">Project #{project.id.toString()}</h4>
         <Badge variant={project.status === ProjectStatus.Disputed ? "destructive" : "secondary"}>{statusLabel(project.status)}</Badge>
@@ -99,11 +99,11 @@ export function ProjectCard({
         Client: {shortAddress(project.client)} · Freelancer: {shortAddress(project.freelancer)}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-xl border border-white/40 bg-white/50 p-3">
+        <div className="rounded-xl border border-white/40 bg-white/50 p-3 transition hover:bg-white/65">
           <p className="text-zinc-500">Escrowed</p>
           <p className="font-semibold">{formatTokenAmount(project.totalAmount, decimals)} {currencyLabel(project.token)}</p>
         </div>
-        <div className="rounded-xl border border-white/40 bg-white/50 p-3">
+        <div className="rounded-xl border border-white/40 bg-white/50 p-3 transition hover:bg-white/65">
           <p className="text-zinc-500">Remaining</p>
           <p className="font-semibold">{formatTokenAmount(project.remainingAmount, decimals)} {currencyLabel(project.token)}</p>
         </div>

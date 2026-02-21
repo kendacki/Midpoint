@@ -3,6 +3,8 @@
 :root {
   --background: #f4f5fb;
   --foreground: #101828;
+  --mx: 50;
+  --my: 50;
 }
 
 @theme inline {
@@ -32,6 +34,7 @@ body {
 .midpoint-bg {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .midpoint-bg::before {
@@ -49,6 +52,12 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.58);
   box-shadow: 0 10px 45px rgba(90, 60, 160, 0.14);
   backdrop-filter: blur(14px);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.interactive-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 35px rgba(89, 71, 180, 0.2);
 }
 
 .glass-button {
@@ -65,7 +74,7 @@ body {
 }
 
 .glass-button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-3px) scale(1.01);
   box-shadow: 0 8px 26px rgba(116, 95, 228, 0.35);
 }
 
@@ -79,6 +88,54 @@ body {
 
 .floating-card {
   animation: float-card 3.5s ease-in-out infinite;
+}
+
+.reveal-up {
+  animation: reveal-up 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.parallax-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.parallax-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(14px);
+  opacity: 0.45;
+}
+
+.parallax-blob-a {
+  width: 380px;
+  height: 380px;
+  left: -80px;
+  top: 100px;
+  background: radial-gradient(circle at 35% 35%, rgba(156, 111, 255, 0.55), rgba(156, 111, 255, 0));
+  transform: translate3d(calc((var(--mx) - 50) * -0.2px), calc((var(--my) - 50) * -0.12px), 0);
+  animation: blob-drift-a 12s ease-in-out infinite;
+}
+
+.parallax-blob-b {
+  width: 420px;
+  height: 420px;
+  right: -120px;
+  top: 220px;
+  background: radial-gradient(circle at 35% 35%, rgba(85, 186, 255, 0.5), rgba(85, 186, 255, 0));
+  transform: translate3d(calc((var(--mx) - 50) * 0.15px), calc((var(--my) - 50) * -0.2px), 0);
+  animation: blob-drift-b 14s ease-in-out infinite;
+}
+
+.parallax-blob-c {
+  width: 340px;
+  height: 340px;
+  left: 32%;
+  bottom: -140px;
+  background: radial-gradient(circle at 35% 35%, rgba(107, 139, 255, 0.48), rgba(107, 139, 255, 0));
+  transform: translate3d(calc((var(--mx) - 50) * -0.08px), calc((var(--my) - 50) * 0.15px), 0);
+  animation: blob-drift-c 16s ease-in-out infinite;
 }
 
 @keyframes burning-pulse {
@@ -102,5 +159,42 @@ body {
   }
   100% {
     transform: translateY(0);
+  }
+}
+
+@keyframes reveal-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blob-drift-a {
+  0%, 100% { transform: translate3d(calc((var(--mx) - 50) * -0.2px), calc((var(--my) - 50) * -0.12px), 0); }
+  50% { transform: translate3d(calc((var(--mx) - 50) * -0.26px), calc((var(--my) - 50) * -0.18px), 0); }
+}
+
+@keyframes blob-drift-b {
+  0%, 100% { transform: translate3d(calc((var(--mx) - 50) * 0.15px), calc((var(--my) - 50) * -0.2px), 0); }
+  50% { transform: translate3d(calc((var(--mx) - 50) * 0.22px), calc((var(--my) - 50) * -0.12px), 0); }
+}
+
+@keyframes blob-drift-c {
+  0%, 100% { transform: translate3d(calc((var(--mx) - 50) * -0.08px), calc((var(--my) - 50) * 0.15px), 0); }
+  50% { transform: translate3d(calc((var(--mx) - 50) * -0.16px), calc((var(--my) - 50) * 0.2px), 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-card,
+  .burning-pulse,
+  .reveal-up,
+  .parallax-blob-a,
+  .parallax-blob-b,
+  .parallax-blob-c {
+    animation: none !important;
   }
 }
