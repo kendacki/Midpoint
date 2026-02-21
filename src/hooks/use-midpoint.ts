@@ -9,6 +9,7 @@ import {
   useDisconnect,
   usePublicClient,
   useReadContracts,
+  useWalletClient,
   useWriteContract,
 } from "wagmi";
 import { injected } from "wagmi/connectors";
@@ -52,6 +53,7 @@ export function useMidpoint() {
   const { connectAsync, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
   const { data: scopedProjectIds = [], isLoading: isLoadingScopedProjects } = useQuery({
@@ -298,11 +300,31 @@ export function useMidpoint() {
   }
 
   async function uploadToIpfs(file: File) {
+    if (!address || !walletClient) {
+      throw new Error("Connect your wallet to upload files.");
+    }
+
+    const nonceResponse = await fetch(`/api/ipfs?address=${address}`);
+    if (!nonceResponse.ok) {
+      const noncePayload = (await nonceResponse.json().catch(() => ({}))) as { error?: string };
+      throw new Error(noncePayload.error ?? "Failed to get upload nonce");
+    }
+    const noncePayload = (await nonceResponse.json()) as { nonce: string; message: string };
+    const signature = await walletClient.signMessage({
+      account: address,
+      message: noncePayload.message,
+    });
+
     const formData = new FormData();
     formData.append("file", file);
 
     const response = await fetch("/api/ipfs", {
       method: "POST",
+      headers: {
+        "x-midpoint-address": address,
+        "x-midpoint-nonce": noncePayload.nonce,
+        "x-midpoint-signature": signature,
+      },
       body: formData,
     });
 

@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { formatDistanceStrict } from "date-fns";
+import Image from "next/image";
 import { Address, zeroAddress } from "viem";
-import { AlertTriangle, Flame, Upload, Wallet } from "lucide-react";
+import { AlertTriangle, Flame, Upload } from "lucide-react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +15,7 @@ import { MidpointProject, ProjectStatus, useMidpoint } from "@/hooks/use-midpoin
 
 const REVIEW_SECONDS = 14 * 24 * 60 * 60;
 const DISPUTE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const LOGO_SRC = "/midpoint-logo.png";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -287,19 +290,11 @@ export default function Home() {
     <main className="mx-auto min-h-screen w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
+          <Image src={LOGO_SRC} alt="Midpoint logo" width={200} height={96} className="mb-2 h-auto w-[140px] sm:w-[180px]" priority />
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Midpoint</h1>
           <p className="text-sm text-zinc-600">On-Chain Letter of Credit for freelancers on Polygon</p>
         </div>
-        {midpoint.isConnected ? (
-          <Button variant="outline" onClick={() => midpoint.disconnect()}>
-            {shortAddress(midpoint.address!)}
-          </Button>
-        ) : (
-          <Button onClick={() => midpoint.connectWallet()} disabled={midpoint.isConnecting}>
-            <Wallet className="mr-2 h-4 w-4" />
-            Connect Wallet
-          </Button>
-        )}
+        <ConnectButton chainStatus="icon" showBalance={false} />
       </div>
 
       {!midpoint.escrowAddress ? (

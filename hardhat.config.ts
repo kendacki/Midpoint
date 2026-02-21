@@ -3,6 +3,7 @@ import { config as loadEnv } from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 
 loadEnv();
+loadEnv({ path: ".env.local", override: true });
 
 const PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY ?? "";
 const AMOY_RPC_URL = process.env.AMOY_RPC_URL ?? "https://rpc-amoy.polygon.technology";
