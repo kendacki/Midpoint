@@ -12,7 +12,9 @@ export function TopNav() {
           <Image src="/midpoint-logo.png" alt="Midpoint logo" width={120} height={52} className="h-auto w-[84px] sm:w-[112px]" />
           <div className="hidden truncate text-xs text-zinc-700 sm:block">On-chain escrow for builders</div>
         </div>
-        <ConnectButton chainStatus="icon" showBalance={false} />
+        <div className="glass-connect">
+          <ConnectButton chainStatus="icon" showBalance={false} />
+        </div>
       </div>
       <nav className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-sm font-medium text-zinc-700 md:hidden">
         <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:text-zinc-950" href="/">Home</Link>

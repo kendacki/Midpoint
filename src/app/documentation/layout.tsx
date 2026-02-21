@@ -13,8 +13,7 @@ export default function DocumentationLayout({
       <TopNav />
       <section className="mx-auto w-full max-w-6xl">
         <div className="mb-5 glass-panel interactive-lift reveal-up rounded-3xl p-6">
-          <p className="font-montserrat text-xs uppercase tracking-[0.22em] text-violet-600">GitBook Style Docs</p>
-          <h1 className="mt-2 font-montserrat text-2xl font-bold text-zinc-900 sm:text-4xl">Midpoint Documentation</h1>
+          <h1 className="font-montserrat text-2xl font-bold text-zinc-900 sm:text-4xl">Midpoint Documentation</h1>
           <p className="mt-2 max-w-3xl text-sm text-zinc-700 sm:text-base">
             Multi-page guide for using, deploying, and maintaining Midpoint on Polygon.
           </p>
