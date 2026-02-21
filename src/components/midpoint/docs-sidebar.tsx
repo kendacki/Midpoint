@@ -19,9 +19,9 @@ export function DocsSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="glass-panel interactive-lift reveal-up h-fit rounded-2xl p-4 lg:sticky lg:top-24">
+    <aside className="glass-panel interactive-lift reveal-up h-fit rounded-2xl p-3 sm:p-4 lg:sticky lg:top-24">
       <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">Documentation</p>
-      <nav className="space-y-1">
+      <nav className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-1">
         {docsLinks.map((item) => {
           const active = pathname === item.href;
           return (

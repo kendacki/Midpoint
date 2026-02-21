@@ -90,7 +90,7 @@ export function ProjectCard({
   }, [nextBurnAt]);
 
   return (
-    <article className="glass-panel interactive-lift rounded-2xl p-4">
+    <article className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-zinc-900">Project #{project.id.toString()}</h4>
         <Badge variant={project.status === ProjectStatus.Disputed ? "destructive" : "secondary"}>{statusLabel(project.status)}</Badge>
@@ -98,14 +98,14 @@ export function ProjectCard({
       <p className="text-xs text-zinc-600">
         Client: {shortAddress(project.client)} · Freelancer: {shortAddress(project.freelancer)}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+      <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
         <div className="rounded-xl border border-white/40 bg-white/50 p-3 transition hover:bg-white/65">
           <p className="text-zinc-500">Escrowed</p>
-          <p className="font-semibold">{formatTokenAmount(project.totalAmount, decimals)} {currencyLabel(project.token)}</p>
+          <p className="break-all font-semibold">{formatTokenAmount(project.totalAmount, decimals)} {currencyLabel(project.token)}</p>
         </div>
         <div className="rounded-xl border border-white/40 bg-white/50 p-3 transition hover:bg-white/65">
           <p className="text-zinc-500">Remaining</p>
-          <p className="font-semibold">{formatTokenAmount(project.remainingAmount, decimals)} {currencyLabel(project.token)}</p>
+          <p className="break-all font-semibold">{formatTokenAmount(project.remainingAmount, decimals)} {currencyLabel(project.token)}</p>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export function ProjectCard({
             <span className="text-sm font-semibold">Dispute Decay</span>
           </div>
           <p className="text-sm text-red-700">Next burn in {burnRemaining}</p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <Button size="sm" variant="destructive" disabled={isWriting} onClick={() => onApplyDecay(project.id)}>
               Apply Burn
             </Button>

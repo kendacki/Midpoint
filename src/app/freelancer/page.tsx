@@ -13,10 +13,10 @@ export default function FreelancerPage() {
     <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
       <MotionDecor />
       <TopNav />
-      <section className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="mx-auto grid w-full max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-5">
           <div className="glass-panel interactive-lift reveal-up rounded-3xl p-6">
-            <h1 className="font-montserrat text-3xl font-bold text-zinc-900">Freelancer Dashboard</h1>
+            <h1 className="font-montserrat text-2xl font-bold text-zinc-900 sm:text-3xl">Freelancer Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600">Submit work, monitor review timers, and claim funds when eligible.</p>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="mini-glass interactive-lift">
