@@ -41,11 +41,42 @@ export type MidpointProject = {
   previewBurn: bigint;
 };
 
+export type MidpointHistoryEntry = {
+  projectId: bigint;
+  event: string;
+  txHash: `0x${string}`;
+  blockNumber: bigint;
+};
+
 const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as Address | undefined;
 const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as Address | undefined;
 const projectCreatedEvent = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount)"
 );
+const workSubmittedEvent = parseAbiItem("event WorkSubmitted(uint256 indexed projectId,string ipfsCid,uint256 reviewDeadline)");
+const projectDisputedEvent = parseAbiItem("event ProjectDisputed(uint256 indexed projectId,uint256 disputeStartTime)");
+const disputeDecayEvent = parseAbiItem(
+  "event DisputeDecayApplied(uint256 indexed projectId,uint256 burnedAmount,uint32 totalIntervalsBurned)"
+);
+const settlementProposedEvent = parseAbiItem(
+  "event SettlementProposed(uint256 indexed projectId,address indexed proposer,uint256 freelancerCutBps)"
+);
+const projectResolvedEvent = parseAbiItem(
+  "event ProjectResolved(uint256 indexed projectId,uint256 freelancerAmount,uint256 clientAmount,uint256 burnedAmount)"
+);
+const timeoutClaimedEvent = parseAbiItem("event TimeoutClaimed(uint256 indexed projectId,uint256 amount)");
+const reviewApprovedEvent = parseAbiItem("event ReviewApproved(uint256 indexed projectId,uint256 amount)");
+
+const historyEventDefs = [
+  { label: "Project Created", event: projectCreatedEvent },
+  { label: "Work Submitted", event: workSubmittedEvent },
+  { label: "Project Disputed", event: projectDisputedEvent },
+  { label: "Dispute Burn Applied", event: disputeDecayEvent },
+  { label: "Settlement Proposed", event: settlementProposedEvent },
+  { label: "Project Resolved", event: projectResolvedEvent },
+  { label: "Timeout Claimed", event: timeoutClaimedEvent },
+  { label: "Review Approved", event: reviewApprovedEvent },
+] as const;
 
 export function useMidpoint() {
   const queryClient = useQueryClient();
@@ -159,6 +190,48 @@ export function useMidpoint() {
       .sort((a, b) => Number(b.id - a.id));
   }, [contractData, ids]);
 
+  const { data: history = [], isLoading: isLoadingHistory } = useQuery({
+    queryKey: ["midpoint-history", escrowAddress, ids.map((id) => id.toString()).join(",")],
+    enabled: Boolean(escrowAddress && publicClient && ids.length),
+    queryFn: async () => {
+      if (!escrowAddress || !publicClient || !ids.length) return [];
+
+      const calls: Promise<MidpointHistoryEntry[]>[] = [];
+      for (const id of ids) {
+        for (const def of historyEventDefs) {
+          const call = publicClient
+            .getLogs({
+              address: escrowAddress,
+              event: def.event,
+              args: { projectId: id },
+              fromBlock: 0n,
+              toBlock: "latest",
+            })
+            .then((logs) =>
+              logs.map(
+                (log) =>
+                  ({
+                    projectId: id,
+                    event: def.label,
+                    txHash: log.transactionHash,
+                    blockNumber: log.blockNumber,
+                  }) satisfies MidpointHistoryEntry
+              )
+            );
+          calls.push(call);
+        }
+      }
+
+      const logGroups = await Promise.all(calls);
+      return logGroups
+        .flat()
+        .sort((a, b) =>
+          a.blockNumber === b.blockNumber ? 0 : a.blockNumber > b.blockNumber ? -1 : 1
+        );
+    },
+    refetchInterval: 20_000,
+  });
+
   const activeProjects = projects.filter((project) => project.status !== ProjectStatus.Resolved);
   const completedProjects = projects.filter((project) => project.status === ProjectStatus.Resolved);
 
@@ -194,6 +267,11 @@ export function useMidpoint() {
     if (project.status !== ProjectStatus.UnderReview) return false;
     return Number(project.reviewDeadline) * 1000 < Date.now();
   });
+
+  const clientProjectIds = new Set(clientProjects.map((project) => project.id.toString()));
+  const freelancerProjectIds = new Set(freelancerProjects.map((project) => project.id.toString()));
+  const clientHistory = history.filter((entry) => clientProjectIds.has(entry.projectId.toString()));
+  const freelancerHistory = history.filter((entry) => freelancerProjectIds.has(entry.projectId.toString()));
 
   async function refresh() {
     await queryClient.invalidateQueries();
@@ -346,7 +424,7 @@ export function useMidpoint() {
     disconnect,
     escrowAddress,
     usdcAddress,
-    isLoading: isLoadingScopedProjects || isLoadingProjects,
+    isLoading: isLoadingScopedProjects || isLoadingProjects || isLoadingHistory,
     projects,
     activeProjects,
     completedProjects,
@@ -357,6 +435,9 @@ export function useMidpoint() {
     freelancerProjects,
     pendingSubmissions,
     claimableFunds,
+    history,
+    clientHistory,
+    freelancerHistory,
     createProjectNative,
     createProjectUSDC,
     submitWork,

@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat, Poppins } from "next/font/google";
 import "./globals.css";
 import { Web3Provider } from "@/components/providers/web3-provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const poppins = Poppins({
+  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  weight: ["500", "600", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -25,9 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${poppins.variable} ${montserrat.variable} antialiased`}>
         <Web3Provider>{children}</Web3Provider>
       </body>
     </html>

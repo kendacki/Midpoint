@@ -1,57 +1,76 @@
 # Midpoint
 
-Midpoint is a decentralized escrow dApp on Polygon Amoy that acts like an on-chain Letter of Credit for freelancer projects.
+Midpoint is an on-chain escrow platform for freelancers and clients.
 
-## Features
+Think of it as a digital middle ground:
+- the client locks payment in escrow
+- the freelancer submits work
+- both sides are protected by transparent smart-contract rules
 
-- Escrow deposits in native POL or ERC20 (USDC).
-- Contract states: `AwaitingSubmission`, `UnderReview`, `Disputed`, `Resolved`.
-- Freelancer submission by IPFS CID with a strict 14-day review deadline.
-- Timeout clause: freelancer can claim full payout after deadline if no action is taken.
-- Decaying dispute mode: burns **5% of total escrow every 7 days** to `0x...dEaD`.
-- Mutual settlement flow requiring both parties to confirm the same split.
+Built on Polygon Amoy with a clean wallet-first dashboard.
 
-## Project Structure
+## How It Works
 
-- `contracts/MidpointEscrow.sol`: escrow contract.
-- `scripts/deploy-amoy.js`: Polygon Amoy deployment script.
-- `src/hooks/use-midpoint.ts`: wagmi/viem read-write hook for the dApp.
-- `src/app/page.tsx`: dashboard UI (mobile-first).
-- `src/app/api/ipfs/route.ts`: server route for Pinata IPFS upload.
+1. Client creates a project and funds escrow (POL or USDC).
+2. Freelancer submits work using an IPFS CID.
+3. Client reviews and either approves, disputes, or does nothing.
+4. If the review time expires, the freelancer can claim timeout payment.
 
-## Setup
+Disputes include Midpoint's "decay pressure" model:
+- unresolved disputes burn 5% of total escrow every 7 days.
 
-1. Install dependencies:
+## Main Features
+
+- Wallet-based identity (no email signup/login).
+- Role views for Client and Freelancer dashboards.
+- On-chain privacy filtering (only your relevant projects).
+- 14-day review countdown UI.
+- IPFS upload flow handled through backend API route.
+- Dispute settlement + timeout claim logic.
+
+## Tech Stack
+
+- Next.js (App Router) + Tailwind CSS
+- Wagmi + Viem + RainbowKit
+- Solidity + OpenZeppelin + Hardhat
+- Pinata IPFS integration (server-side)
+
+## Quick Start
 
 ```bash
 npm install
-```
-
-2. Copy env template:
-
-```bash
 cp .env.example .env.local
 ```
 
-3. Fill in:
+Fill `.env.local`:
 - `NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS`
 - `NEXT_PUBLIC_USDC_AMOY_ADDRESS`
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
-- `PINATA_JWT`
+- `PINATA_API_KEY`
+- `PINATA_API_SECRET` (or `PINATA_JWT`)
 - `AMOY_RPC_URL`
 - `DEPLOYER_PRIVATE_KEY`
 
-## Contract Commands
+## Smart Contract Commands
 
 ```bash
 npm run contract:compile
 npm run contract:deploy:amoy
 ```
 
-## Frontend
+## Run The App
 
 ```bash
 npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## Deploy To Vercel
+
+1. Push to GitHub.
+2. Import repo in Vercel.
+3. Add the same environment variables in Vercel Project Settings.
+4. Deploy.
+
+Important: keep secrets (`PINATA_API_SECRET`, `PINATA_JWT`, `DEPLOYER_PRIVATE_KEY`) server-side only.
