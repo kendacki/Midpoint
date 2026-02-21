@@ -27,6 +27,10 @@ export function MotionDecor() {
 
   return (
     <div className="parallax-layer" aria-hidden="true">
+      <div className="video-bg-base" />
+      <div className="video-bg-wave video-bg-wave-a" />
+      <div className="video-bg-wave video-bg-wave-b" />
+      <div className="video-bg-grain" />
       <div className="parallax-blob parallax-blob-a" />
       <div className="parallax-blob parallax-blob-b" />
       <div className="parallax-blob parallax-blob-c" />

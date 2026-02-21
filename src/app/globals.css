@@ -99,6 +99,53 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: -1;
+  overflow: hidden;
+}
+
+.video-bg-base {
+  position: absolute;
+  inset: -8%;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(166, 104, 255, 0.24), transparent 36%),
+    radial-gradient(circle at 78% 22%, rgba(84, 190, 255, 0.22), transparent 34%),
+    radial-gradient(circle at 60% 72%, rgba(88, 131, 255, 0.18), transparent 34%),
+    linear-gradient(120deg, rgba(252, 252, 255, 0.38), rgba(236, 242, 255, 0.5));
+  filter: saturate(1.12) contrast(1.06);
+  animation: video-pan 18s ease-in-out infinite alternate;
+}
+
+.video-bg-wave {
+  position: absolute;
+  width: 180vmax;
+  height: 180vmax;
+  border-radius: 44%;
+  filter: blur(20px);
+  opacity: 0.4;
+}
+
+.video-bg-wave-a {
+  left: -72vmax;
+  top: -96vmax;
+  background: conic-gradient(from 180deg, rgba(148, 115, 255, 0.32), rgba(123, 211, 255, 0.26), rgba(148, 115, 255, 0.32));
+  animation: wave-rotate-a 24s linear infinite;
+}
+
+.video-bg-wave-b {
+  right: -88vmax;
+  bottom: -92vmax;
+  background: conic-gradient(from 70deg, rgba(92, 164, 255, 0.28), rgba(188, 134, 255, 0.2), rgba(92, 164, 255, 0.28));
+  animation: wave-rotate-b 29s linear infinite;
+}
+
+.video-bg-grain {
+  position: absolute;
+  inset: -10%;
+  opacity: 0.08;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.95) 0.45px, transparent 0.45px);
+  background-size: 3px 3px;
+  mix-blend-mode: soft-light;
+  animation: grain-shift 520ms steps(3) infinite;
 }
 
 .parallax-blob {
@@ -162,6 +209,41 @@ body {
   }
 }
 
+@keyframes video-pan {
+  0% {
+    transform: scale(1.04) translate3d(-1.8%, -0.8%, 0);
+  }
+  100% {
+    transform: scale(1.1) translate3d(1.2%, 1.4%, 0);
+  }
+}
+
+@keyframes wave-rotate-a {
+  0% {
+    transform: rotate(0deg) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: rotate(360deg) translate3d(2%, -2%, 0);
+  }
+}
+
+@keyframes wave-rotate-b {
+  0% {
+    transform: rotate(0deg) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: rotate(-360deg) translate3d(-2%, 2%, 0);
+  }
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1%, 0.4%); }
+  50% { transform: translate(0.6%, -0.3%); }
+  75% { transform: translate(-0.4%, 0.5%); }
+  100% { transform: translate(0, 0); }
+}
+
 @keyframes reveal-up {
   0% {
     opacity: 0;
@@ -192,6 +274,10 @@ body {
   .floating-card,
   .burning-pulse,
   .reveal-up,
+  .video-bg-base,
+  .video-bg-wave-a,
+  .video-bg-wave-b,
+  .video-bg-grain,
   .parallax-blob-a,
   .parallax-blob-b,
   .parallax-blob-c {
