@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDistanceStrict } from "date-fns";
 import Image from "next/image";
 import { Address, zeroAddress } from "viem";
@@ -255,6 +255,7 @@ export default function Home() {
   const [usdcAmount, setUsdcAmount] = useState("25");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPortal, setSelectedPortal] = useState<"welcome" | "client" | "freelancer">("welcome");
 
   async function handleCreateNative() {
     setError(null);
@@ -282,8 +283,25 @@ export default function Home() {
     }
   }
 
-  const hasRole = midpoint.isClientRole || midpoint.isFreelancerRole;
-  const showWelcome = !midpoint.isConnected || !hasRole;
+  useEffect(() => {
+    if (!midpoint.isConnected) {
+      setSelectedPortal("welcome");
+      return;
+    }
+    if (midpoint.isClientRole) {
+      setSelectedPortal("client");
+      return;
+    }
+    if (midpoint.isFreelancerRole) {
+      setSelectedPortal("freelancer");
+      return;
+    }
+    setSelectedPortal("client");
+  }, [midpoint.isConnected, midpoint.isClientRole, midpoint.isFreelancerRole]);
+
+  const showWelcome = !midpoint.isConnected;
+  const showClientPortal = midpoint.isConnected && selectedPortal === "client";
+  const showFreelancerPortal = midpoint.isConnected && selectedPortal === "freelancer";
   const clientActiveEscrows = midpoint.clientProjects.filter((project) => project.status !== ProjectStatus.Resolved);
 
   return (
@@ -316,6 +334,35 @@ export default function Home() {
         <DashboardCard title="Completed" value={midpoint.completedProjects.length} subtitle="Resolved and closed projects" />
       </section>
 
+      {midpoint.isConnected ? (
+        <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            className={`rounded-xl border p-4 text-left transition ${
+              selectedPortal === "client" ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white"
+            }`}
+            onClick={() => setSelectedPortal("client")}
+          >
+            <p className="text-sm font-semibold">Client Dashboard</p>
+            <p className={`mt-1 text-sm ${selectedPortal === "client" ? "text-zinc-100" : "text-zinc-500"}`}>
+              Initialize projects, fund escrow, and manage reviews/disputes.
+            </p>
+          </button>
+          <button
+            type="button"
+            className={`rounded-xl border p-4 text-left transition ${
+              selectedPortal === "freelancer" ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white"
+            }`}
+            onClick={() => setSelectedPortal("freelancer")}
+          >
+            <p className="text-sm font-semibold">Freelancer Dashboard</p>
+            <p className={`mt-1 text-sm ${selectedPortal === "freelancer" ? "text-zinc-100" : "text-zinc-500"}`}>
+              Submit work, monitor claims, and follow dispute outcomes.
+            </p>
+          </button>
+        </section>
+      ) : null}
+
       {showWelcome ? (
         <section className="pb-12">
           <Card className="border-zinc-200 bg-white">
@@ -335,7 +382,7 @@ export default function Home() {
         </section>
       ) : null}
 
-      {midpoint.isClientRole ? (
+      {showClientPortal ? (
         <>
           <section className="mb-6">
             <Card>
@@ -398,7 +445,7 @@ export default function Home() {
         </>
       ) : null}
 
-      {midpoint.isFreelancerRole ? (
+      {showFreelancerPortal ? (
         <section className="space-y-4 pb-12">
           <h2 className="text-lg font-semibold text-zinc-900">Freelancer Portal</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
