@@ -38,6 +38,7 @@ export type MidpointProject = {
   status: ProjectStatus;
   exists: boolean;
   submissionCid: string;
+  description: string;
   previewBurn: bigint;
 };
 
@@ -50,8 +51,11 @@ export type MidpointHistoryEntry = {
 
 const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as Address | undefined;
 const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as Address | undefined;
-const projectCreatedEvent = parseAbiItem(
+const projectCreatedEventV1 = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount)"
+);
+const projectCreatedEventV2 = parseAbiItem(
+  "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount,string description)"
 );
 const MIN_AMOY_PRIORITY_FEE = parseUnits("3", 9);
 const workSubmittedEvent = parseAbiItem("event WorkSubmitted(uint256 indexed projectId,string ipfsCid,uint256 reviewDeadline)");
@@ -69,7 +73,8 @@ const timeoutClaimedEvent = parseAbiItem("event TimeoutClaimed(uint256 indexed p
 const reviewApprovedEvent = parseAbiItem("event ReviewApproved(uint256 indexed projectId,uint256 amount)");
 
 const historyEventDefs = [
-  { label: "Project Created", event: projectCreatedEvent },
+  { label: "Project Created", event: projectCreatedEventV1 },
+  { label: "Project Created", event: projectCreatedEventV2 },
   { label: "Work Submitted", event: workSubmittedEvent },
   { label: "Project Disputed", event: projectDisputedEvent },
   { label: "Dispute Burn Applied", event: disputeDecayEvent },
@@ -94,26 +99,71 @@ export function useMidpoint() {
     queryFn: async () => {
       if (!escrowAddress || !address || !publicClient) return [];
 
-      const [asClientLogs, asFreelancerLogs] = await Promise.all([
+      const ids = new Set<bigint>();
+
+      const logGroups = await Promise.all([
         publicClient.getLogs({
           address: escrowAddress,
-          event: projectCreatedEvent,
+          event: projectCreatedEventV1,
           args: { client: address },
           fromBlock: 0n,
           toBlock: "latest",
         }),
         publicClient.getLogs({
           address: escrowAddress,
-          event: projectCreatedEvent,
+          event: projectCreatedEventV1,
+          args: { freelancer: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV2,
+          args: { client: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }),
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV2,
           args: { freelancer: address },
           fromBlock: 0n,
           toBlock: "latest",
         }),
       ]);
 
-      const ids = new Set<bigint>();
-      for (const log of [...asClientLogs, ...asFreelancerLogs]) {
-        if (log.args.projectId) ids.add(log.args.projectId);
+      for (const group of logGroups) {
+        for (const log of group) {
+          if (log.args.projectId) ids.add(log.args.projectId);
+        }
+      }
+
+      // Fallback scan for contracts/providers where topic-filtered logs can be flaky.
+      if (!ids.size) {
+        const nextProjectId = (await publicClient.readContract({
+          abi: midpointEscrowAbi,
+          address: escrowAddress,
+          functionName: "nextProjectId",
+        })) as bigint;
+
+        const latestId = nextProjectId > 0n ? nextProjectId - 1n : 0n;
+        const minId = latestId > 200n ? latestId - 199n : 1n;
+        for (let id = latestId; id >= minId; id -= 1n) {
+          const project = (await publicClient.readContract({
+            abi: midpointEscrowAbi,
+            address: escrowAddress,
+            functionName: "projects",
+            args: [id],
+          })) as RawProject;
+          if (!project[9]) continue;
+          if (
+            project[0].toLowerCase() === address.toLowerCase() ||
+            project[1].toLowerCase() === address.toLowerCase()
+          ) {
+            ids.add(id);
+          }
+          if (id === 1n) break;
+        }
       }
 
       return Array.from(ids).sort((a, b) => Number(b - a));
@@ -123,6 +173,26 @@ export function useMidpoint() {
   });
 
   const ids = scopedProjectIds;
+
+  const { data: supportsProjectDescription = false } = useQuery({
+    queryKey: ["midpoint-supports-project-description", escrowAddress],
+    enabled: Boolean(escrowAddress && publicClient),
+    queryFn: async () => {
+      if (!escrowAddress || !publicClient) return false;
+      try {
+        await publicClient.readContract({
+          abi: midpointEscrowAbi,
+          address: escrowAddress,
+          functionName: "projectDescriptions",
+          args: [1n],
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    staleTime: 60_000,
+  });
 
   const projectContracts = useMemo(
     () =>
@@ -145,6 +215,12 @@ export function useMidpoint() {
           functionName: "previewDecayBurn" as const,
           args: [id],
         },
+        {
+          abi: midpointEscrowAbi,
+          address: escrowAddress as Address,
+          functionName: "projectDescriptions" as const,
+          args: [id],
+        },
       ]),
     [ids]
   );
@@ -163,10 +239,11 @@ export function useMidpoint() {
 
     return ids
       .map((id, index) => {
-        const baseIndex = index * 3;
+        const baseIndex = index * 4;
         const projectResult = contractData[baseIndex];
         const cidResult = contractData[baseIndex + 1];
         const burnResult = contractData[baseIndex + 2];
+        const descriptionResult = contractData[baseIndex + 3];
 
         if (projectResult.status !== "success" || !projectResult.result) return null;
         const raw = projectResult.result as RawProject;
@@ -184,6 +261,7 @@ export function useMidpoint() {
           status: Number(raw[8]) as ProjectStatus,
           exists: raw[9],
           submissionCid: cidResult?.status === "success" ? (cidResult.result as string) : "",
+          description: descriptionResult?.status === "success" ? (descriptionResult.result as string) : "",
           previewBurn: burnResult?.status === "success" ? (burnResult.result as bigint) : 0n,
         } satisfies MidpointProject;
       })
@@ -192,7 +270,7 @@ export function useMidpoint() {
   }, [contractData, ids]);
 
   const { data: history = [], isLoading: isLoadingHistory } = useQuery({
-    queryKey: ["midpoint-history", escrowAddress, ids.map((id) => id.toString()).join(",")],
+    queryKey: ["midpoint-history", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
     enabled: Boolean(escrowAddress && publicClient && ids.length),
     queryFn: async () => {
       if (!escrowAddress || !publicClient || !ids.length) return [];
@@ -218,7 +296,8 @@ export function useMidpoint() {
                     blockNumber: log.blockNumber,
                   }) satisfies MidpointHistoryEntry
               )
-            );
+            )
+            .catch(() => []);
           calls.push(call);
         }
       }
@@ -312,25 +391,31 @@ export function useMidpoint() {
     return hash;
   }
 
-  async function createProjectNative(freelancer: Address, amount: string) {
+  async function createProjectNative(freelancer: Address, amount: string, description: string) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
+    const sanitizedDescription = description.trim();
+    if (!sanitizedDescription) throw new Error("Project description is required");
     return sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,
       functionName: "createProjectNative",
-      args: [freelancer],
+      args: supportsProjectDescription ? [freelancer, sanitizedDescription] : [freelancer],
       value: parseEther(amount),
     });
   }
 
-  async function createProjectUSDC(freelancer: Address, amount: string) {
+  async function createProjectUSDC(freelancer: Address, amount: string, description: string) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
     if (!usdcAddress) throw new Error("Missing NEXT_PUBLIC_USDC_AMOY_ADDRESS");
+    const sanitizedDescription = description.trim();
+    if (!sanitizedDescription) throw new Error("Project description is required");
     return sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,
       functionName: "createProjectERC20",
-      args: [usdcAddress, freelancer, parseUnits(amount, 6)],
+      args: supportsProjectDescription
+        ? [usdcAddress, freelancer, parseUnits(amount, 6), sanitizedDescription]
+        : [usdcAddress, freelancer, parseUnits(amount, 6)],
     });
   }
 

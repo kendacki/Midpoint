@@ -43,6 +43,7 @@ contract MidpointEscrow is ReentrancyGuard {
 
     mapping(uint256 => Project) public projects;
     mapping(uint256 => string) public submissionCids;
+    mapping(uint256 => string) public projectDescriptions;
     mapping(uint256 => SettlementProposal) public settlementProposals;
 
     event ProjectCreated(
@@ -50,7 +51,8 @@ contract MidpointEscrow is ReentrancyGuard {
         address indexed client,
         address indexed freelancer,
         address token,
-        uint256 amount
+        uint256 amount,
+        string description
     );
     event WorkSubmitted(uint256 indexed projectId, string ipfsCid, uint256 reviewDeadline);
     event ProjectDisputed(uint256 indexed projectId, uint256 disputeStartTime);
@@ -81,12 +83,17 @@ contract MidpointEscrow is ReentrancyGuard {
         _;
     }
 
-    function createProjectNative(address freelancer) external payable nonReentrant returns (uint256 projectId) {
+    function createProjectNative(address freelancer, string calldata description)
+        external
+        payable
+        nonReentrant
+        returns (uint256 projectId)
+    {
         require(msg.value > 0, "Value required");
-        return _createProject(address(0), freelancer, msg.value);
+        return _createProject(address(0), freelancer, msg.value, description);
     }
 
-    function createProjectERC20(address token, address freelancer, uint256 amount)
+    function createProjectERC20(address token, address freelancer, uint256 amount, string calldata description)
         external
         nonReentrant
         returns (uint256 projectId)
@@ -94,7 +101,7 @@ contract MidpointEscrow is ReentrancyGuard {
         require(token != address(0), "Token required");
         require(amount > 0, "Amount required");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        return _createProject(token, freelancer, amount);
+        return _createProject(token, freelancer, amount, description);
     }
 
     function submitWork(uint256 projectId, string calldata ipfsCid)
@@ -219,9 +226,13 @@ contract MidpointEscrow is ReentrancyGuard {
         return burnAmount > project.remainingAmount ? project.remainingAmount : burnAmount;
     }
 
-    function _createProject(address token, address freelancer, uint256 amount) internal returns (uint256 projectId) {
+    function _createProject(address token, address freelancer, uint256 amount, string calldata description)
+        internal
+        returns (uint256 projectId)
+    {
         require(freelancer != address(0), "Freelancer required");
         require(freelancer != msg.sender, "Invalid freelancer");
+        require(bytes(description).length > 0, "Description required");
 
         projectId = nextProjectId++;
         projects[projectId] = Project({
@@ -236,8 +247,9 @@ contract MidpointEscrow is ReentrancyGuard {
             status: Status.AwaitingSubmission,
             exists: true
         });
+        projectDescriptions[projectId] = description;
 
-        emit ProjectCreated(projectId, msg.sender, freelancer, token, amount);
+        emit ProjectCreated(projectId, msg.sender, freelancer, token, amount, description);
     }
 
     function _applyDecay(uint256 projectId, Project storage project) internal returns (uint256 burned) {

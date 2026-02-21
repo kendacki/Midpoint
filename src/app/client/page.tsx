@@ -13,6 +13,7 @@ import { useMidpoint, ProjectStatus } from "@/hooks/use-midpoint";
 export default function ClientPage() {
   const midpoint = useMidpoint();
   const [freelancer, setFreelancer] = useState("");
+  const [description, setDescription] = useState("");
   const [nativeAmount, setNativeAmount] = useState("0.1");
   const [usdcAmount, setUsdcAmount] = useState("25");
   const [isCreating, setIsCreating] = useState(false);
@@ -24,8 +25,9 @@ export default function ClientPage() {
     setError(null);
     setIsCreating(true);
     try {
-      await midpoint.createProjectNative(freelancer as Address, nativeAmount);
+      await midpoint.createProjectNative(freelancer as Address, nativeAmount, description);
       setFreelancer("");
+      setDescription("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create POL escrow");
     } finally {
@@ -37,8 +39,9 @@ export default function ClientPage() {
     setError(null);
     setIsCreating(true);
     try {
-      await midpoint.createProjectUSDC(freelancer as Address, usdcAmount);
+      await midpoint.createProjectUSDC(freelancer as Address, usdcAmount, description);
       setFreelancer("");
+      setDescription("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create USDC escrow");
     } finally {
@@ -57,6 +60,11 @@ export default function ClientPage() {
             <p className="mt-1 text-sm text-zinc-600">Create escrow deals and manage submissions, disputes, and payouts.</p>
             <div className="mt-5 space-y-3">
               <Input value={freelancer} onChange={(e) => setFreelancer(e.target.value)} placeholder="Freelancer wallet address (0x...)" />
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Project description (what this payment is for)"
+              />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input value={nativeAmount} onChange={(e) => setNativeAmount(e.target.value)} placeholder="POL amount" />
                 <Button className="glass-button !h-10 !rounded-xl" onClick={handleCreateNative} disabled={!midpoint.isConnected || isCreating || midpoint.isWriting}>

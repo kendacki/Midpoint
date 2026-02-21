@@ -33,6 +33,13 @@ export const midpointEscrowAbi = [
   },
   {
     type: "function",
+    name: "projectDescriptions",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "string" }],
+  },
+  {
+    type: "function",
     name: "previewDecayBurn",
     stateMutability: "view",
     inputs: [{ name: "projectId", type: "uint256" }],
@@ -47,12 +54,34 @@ export const midpointEscrowAbi = [
   },
   {
     type: "function",
+    name: "createProjectNative",
+    stateMutability: "payable",
+    inputs: [
+      { name: "freelancer", type: "address" },
+      { name: "description", type: "string" },
+    ],
+    outputs: [{ name: "projectId", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "createProjectERC20",
     stateMutability: "nonpayable",
     inputs: [
       { name: "token", type: "address" },
       { name: "freelancer", type: "address" },
       { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "projectId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "createProjectERC20",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "freelancer", type: "address" },
+      { name: "amount", type: "uint256" },
+      { name: "description", type: "string" },
     ],
     outputs: [{ name: "projectId", type: "uint256" }],
   },

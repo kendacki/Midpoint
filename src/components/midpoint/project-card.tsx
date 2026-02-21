@@ -98,6 +98,12 @@ export function ProjectCard({
       <p className="text-xs text-zinc-600">
         Client: {shortAddress(project.client)} · Freelancer: {shortAddress(project.freelancer)}
       </p>
+      {project.description ? (
+        <div className="mt-2 rounded-xl border border-violet-200/70 bg-violet-50/70 p-3 text-sm text-zinc-700">
+          <span className="font-semibold text-violet-800">Project details: </span>
+          {project.description}
+        </div>
+      ) : null}
       <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
         <div className="rounded-xl border border-white/40 bg-white/50 p-3 transition hover:bg-white/65">
           <p className="text-zinc-500">Escrowed</p>
@@ -116,6 +122,14 @@ export function ProjectCard({
             <span className="text-blue-700">{reviewRemaining}</span>
           </div>
           <Progress value={reviewProgress} />
+        </div>
+      ) : null}
+
+      {project.status === ProjectStatus.AwaitingSubmission ? (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {mode === "freelancer"
+            ? "Upload + Submit is now unlocked for freelancer. Once submitted, the 14-day client review timer starts automatically."
+            : "Waiting for freelancer to upload work. The 14-day review timer starts right after submission."}
         </div>
       ) : null}
 
@@ -176,6 +190,17 @@ export function ProjectCard({
           </Button>
         ) : null}
       </div>
+
+      {project.submissionCid ? (
+        <a
+          className="mt-3 inline-block text-sm text-blue-700 underline"
+          href={`https://gateway.pinata.cloud/ipfs/${project.submissionCid}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View submitted file on IPFS
+        </a>
+      ) : null}
     </article>
   );
 }
