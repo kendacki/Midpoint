@@ -44,7 +44,7 @@ export function MotionDecor() {
 
   return (
     <div className="parallax-layer" aria-hidden="true">
-      <video ref={videoRef} className="video-bg-video" autoPlay muted loop playsInline preload="metadata">
+      <video ref={videoRef} className="video-bg-video" autoPlay muted loop playsInline preload="auto">
         <source src="/midpoint-bg.mp4" type="video/mp4" />
       </video>
       <div className="video-bg-tint" />
