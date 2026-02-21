@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export function MotionDecor() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
   useEffect(() => {
     let frame = 0;
     const root = document.documentElement;
@@ -25,8 +27,27 @@ export function MotionDecor() {
     };
   }, []);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const applyPlaybackRate = () => {
+      video.playbackRate = 0.6;
+    };
+
+    applyPlaybackRate();
+    video.addEventListener("loadedmetadata", applyPlaybackRate);
+    return () => {
+      video.removeEventListener("loadedmetadata", applyPlaybackRate);
+    };
+  }, []);
+
   return (
     <div className="parallax-layer" aria-hidden="true">
+      <video ref={videoRef} className="video-bg-video" autoPlay muted loop playsInline preload="metadata">
+        <source src="/midpoint-bg.mp4" type="video/mp4" />
+      </video>
+      <div className="video-bg-tint" />
       <div className="video-bg-base" />
       <div className="video-bg-wave video-bg-wave-a" />
       <div className="video-bg-wave video-bg-wave-b" />
