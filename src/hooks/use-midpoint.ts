@@ -98,6 +98,7 @@ export function useMidpoint() {
     enabled: Boolean(escrowAddress && address && publicClient),
     queryFn: async () => {
       if (!escrowAddress || !address || !publicClient) return [];
+      const normalizedAddress = address.toLowerCase();
 
       const ids = new Set<bigint>();
 
@@ -108,28 +109,28 @@ export function useMidpoint() {
           args: { client: address },
           fromBlock: 0n,
           toBlock: "latest",
-        }),
+        }).catch(() => []),
         publicClient.getLogs({
           address: escrowAddress,
           event: projectCreatedEventV1,
           args: { freelancer: address },
           fromBlock: 0n,
           toBlock: "latest",
-        }),
+        }).catch(() => []),
         publicClient.getLogs({
           address: escrowAddress,
           event: projectCreatedEventV2,
           args: { client: address },
           fromBlock: 0n,
           toBlock: "latest",
-        }),
+        }).catch(() => []),
         publicClient.getLogs({
           address: escrowAddress,
           event: projectCreatedEventV2,
           args: { freelancer: address },
           fromBlock: 0n,
           toBlock: "latest",
-        }),
+        }).catch(() => []),
       ]);
 
       for (const group of logGroups) {
@@ -138,8 +139,8 @@ export function useMidpoint() {
         }
       }
 
-      // Fallback scan for contracts/providers where topic-filtered logs can be flaky.
-      if (!ids.size) {
+      // Always perform a bounded project scan so UI updates even if log indexing is delayed.
+      try {
         const nextProjectId = (await publicClient.readContract({
           abi: midpointEscrowAbi,
           address: escrowAddress,
@@ -147,7 +148,7 @@ export function useMidpoint() {
         })) as bigint;
 
         const latestId = nextProjectId > 0n ? nextProjectId - 1n : 0n;
-        const minId = latestId > 200n ? latestId - 199n : 1n;
+        const minId = latestId > 300n ? latestId - 299n : 1n;
         for (let id = latestId; id >= minId; id -= 1n) {
           const project = (await publicClient.readContract({
             abi: midpointEscrowAbi,
@@ -157,19 +158,21 @@ export function useMidpoint() {
           })) as RawProject;
           if (!project[9]) continue;
           if (
-            project[0].toLowerCase() === address.toLowerCase() ||
-            project[1].toLowerCase() === address.toLowerCase()
+            project[0].toLowerCase() === normalizedAddress ||
+            project[1].toLowerCase() === normalizedAddress
           ) {
             ids.add(id);
           }
           if (id === 1n) break;
         }
+      } catch {
+        // Keep log-derived ids when bounded scan cannot run.
       }
 
       return Array.from(ids).sort((a, b) => Number(b - a));
     },
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
 
   const ids = scopedProjectIds;
