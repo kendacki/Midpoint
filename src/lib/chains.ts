@@ -10,7 +10,11 @@ export const polygonAmoy = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://rpc-amoy.polygon.technology"],
+      http: [
+        "https://rpc-amoy.polygon.technology",
+        "https://polygon-amoy-bor-rpc.publicnode.com",
+        "https://endpoints.omniatech.io/v1/matic/amoy/public",
+      ],
     },
   },
   blockExplorers: {
