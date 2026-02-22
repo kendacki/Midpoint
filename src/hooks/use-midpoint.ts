@@ -523,19 +523,18 @@ export function useMidpoint() {
               toBlock: "latest",
             })
             .then((logs) =>
-              logs
-                .map((log) => {
-                  const projectId = log.args.projectId;
-                  if (!projectId) return null;
-                  if (!targetIds.has(projectId.toString())) return null;
-                  return {
+              logs.flatMap((log) => {
+                const projectId = log.args.projectId;
+                if (!projectId || !targetIds.has(projectId.toString())) return [];
+                return [
+                  {
                     projectId,
                     event: def.label,
                     txHash: log.transactionHash,
                     blockNumber: log.blockNumber,
-                  } satisfies MidpointHistoryEntry;
-                })
-                .filter((entry): entry is MidpointHistoryEntry => Boolean(entry))
+                  } satisfies MidpointHistoryEntry,
+                ];
+              })
             )
             .catch(() => [] as MidpointHistoryEntry[])
         )
@@ -617,9 +616,12 @@ export function useMidpoint() {
       void queryClient.invalidateQueries({ queryKey: ["midpoint-created-at"] });
     };
 
+    const eventsAbi = [workSubmittedEvent, projectResolvedEvent, reviewApprovedEvent] as const;
+
     const unwatchSubmitted = publicClient.watchContractEvent({
       address: escrowAddress,
-      event: workSubmittedEvent,
+      abi: eventsAbi,
+      eventName: "WorkSubmitted",
       onLogs: (logs) => {
         if (!logs.length) return;
         refreshMidpointViews();
@@ -628,7 +630,8 @@ export function useMidpoint() {
 
     const unwatchResolved = publicClient.watchContractEvent({
       address: escrowAddress,
-      event: projectResolvedEvent,
+      abi: eventsAbi,
+      eventName: "ProjectResolved",
       onLogs: (logs) => {
         if (!logs.length) return;
         refreshMidpointViews();
@@ -637,7 +640,8 @@ export function useMidpoint() {
 
     const unwatchApproved = publicClient.watchContractEvent({
       address: escrowAddress,
-      event: reviewApprovedEvent,
+      abi: eventsAbi,
+      eventName: "ReviewApproved",
       onLogs: (logs) => {
         if (!logs.length) return;
         refreshMidpointViews();
