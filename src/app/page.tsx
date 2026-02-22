@@ -7,6 +7,31 @@ import { useMidpoint } from "@/hooks/use-midpoint";
 
 export default function Home() {
   const midpoint = useMidpoint();
+  const isRoleConnected = midpoint.isConnected && (midpoint.isClientRole || midpoint.isFreelancerRole);
+  const role: "client" | "freelancer" | "global" = !isRoleConnected
+    ? "global"
+    : midpoint.isClientRole
+      ? "client"
+      : "freelancer";
+
+  const scopedProjects =
+    role === "client"
+      ? midpoint.clientProjects
+      : role === "freelancer"
+        ? midpoint.freelancerProjects
+        : midpoint.projects;
+
+  const activeTransactions = scopedProjects.filter((project) => project.status !== 3).length;
+  const pendingTransactions = scopedProjects.filter((project) => {
+    if (project.status === 3) return false;
+    if (role === "client") return project.status === 1 || project.status === 2;
+    if (role === "freelancer") return project.status === 0 || project.status === 1 || project.status === 2;
+    return true;
+  }).length;
+  const completedTransactions = scopedProjects.filter((project) => project.status === 3).length;
+
+  const overviewTitle =
+    role === "client" ? "Client Live Overview" : role === "freelancer" ? "Freelancer Live Overview" : "Live Overview";
 
   return (
     <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
@@ -40,19 +65,19 @@ export default function Home() {
         </div>
 
         <div className="glass-panel floating-card interactive-lift rounded-3xl p-6 sm:p-8">
-          <h2 className="font-montserrat text-2xl font-bold text-zinc-900">Live Overview</h2>
+          <h2 className="font-montserrat text-2xl font-bold text-zinc-900">{overviewTitle}</h2>
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="mini-glass interactive-lift">
               <p className="text-xs uppercase text-zinc-500">Active</p>
-              <p className="text-2xl font-semibold">{midpoint.activeProjects.length}</p>
+              <p className="text-2xl font-semibold">{activeTransactions}</p>
             </div>
             <div className="mini-glass interactive-lift">
-              <p className="text-xs uppercase text-zinc-500">Awaiting Action</p>
-              <p className="text-2xl font-semibold">{midpoint.awaitingMyAction.length}</p>
+              <p className="text-xs uppercase text-zinc-500">Pending</p>
+              <p className="text-2xl font-semibold">{pendingTransactions}</p>
             </div>
             <div className="mini-glass interactive-lift">
               <p className="text-xs uppercase text-zinc-500">Completed</p>
-              <p className="text-2xl font-semibold">{midpoint.completedProjects.length}</p>
+              <p className="text-2xl font-semibold">{completedTransactions}</p>
             </div>
           </div>
           <div className="mt-6 rounded-2xl border border-violet-200/70 bg-gradient-to-r from-violet-100/70 to-sky-100/60 p-4 text-sm text-zinc-700">
