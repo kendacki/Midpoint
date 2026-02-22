@@ -162,10 +162,12 @@ contract MidpointEscrow is ReentrancyGuard {
         require(project.status == Status.UnderReview, "Invalid state");
 
         project.status = Status.Disputed;
-        project.disputeStartTime = block.timestamp;
+        if (project.disputeStartTime == 0) {
+            project.disputeStartTime = block.timestamp;
+        }
         settlementProposals[projectId] = SettlementProposal({proposer: address(0), freelancerCutBps: 0});
 
-        emit ProjectDisputed(projectId, block.timestamp);
+        emit ProjectDisputed(projectId, project.disputeStartTime);
     }
 
     function applyDecayBurn(uint256 projectId) external nonReentrant projectExists(projectId) {
@@ -242,7 +244,7 @@ contract MidpointEscrow is ReentrancyGuard {
             totalAmount: amount,
             remainingAmount: amount,
             reviewDeadline: 0,
-            disputeStartTime: 0,
+            disputeStartTime: block.timestamp,
             burnedIntervals: 0,
             status: Status.AwaitingSubmission,
             exists: true

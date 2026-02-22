@@ -12,16 +12,17 @@ import { Progress } from "@/components/ui/progress";
 
 const REVIEW_SECONDS = 14 * 24 * 60 * 60;
 const DISPUTE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const LIFECYCLE_SECONDS = 14 * 24 * 60 * 60;
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function statusLabel(status: ProjectStatus) {
-  if (status === ProjectStatus.AwaitingSubmission) return "Awaiting Submission";
-  if (status === ProjectStatus.UnderReview) return "Under Review";
+  if (status === ProjectStatus.AwaitingSubmission) return "Pending Upload";
+  if (status === ProjectStatus.UnderReview) return "Submitted";
   if (status === ProjectStatus.Disputed) return "Disputed";
-  return "Resolved";
+  return "Completed";
 }
 
 function currencyLabel(token: Address) {
@@ -89,10 +90,25 @@ export function ProjectCard({
     return formatDistanceStrict(Date.now(), Date.now() + ms);
   }, [nextBurnAt]);
 
+  const lifecycleProgress = useMemo(() => {
+    if (!project.createdAt || project.status === ProjectStatus.Resolved) return 0;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const elapsed = Math.max(0, nowSec - project.createdAt);
+    return Math.max(0, Math.min(100, (elapsed / LIFECYCLE_SECONDS) * 100));
+  }, [project.createdAt, project.status]);
+
+  const lifecycleRemaining = useMemo(() => {
+    if (!project.createdAt || project.status === ProjectStatus.Resolved) return "Completed";
+    const endsAtMs = (project.createdAt + LIFECYCLE_SECONDS) * 1000;
+    const ms = endsAtMs - Date.now();
+    if (ms <= 0) return "Cycle elapsed";
+    return formatDistanceStrict(Date.now(), Date.now() + ms);
+  }, [project.createdAt, project.status]);
+
   return (
     <article className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h4 className="font-semibold text-zinc-900">Project #{project.id.toString()}</h4>
+        <h4 className="font-semibold text-zinc-900">{project.description || `Project #${project.id.toString()}`}</h4>
         <Badge variant={project.status === ProjectStatus.Disputed ? "destructive" : "secondary"}>{statusLabel(project.status)}</Badge>
       </div>
       <p className="text-xs text-zinc-600">
@@ -114,6 +130,16 @@ export function ProjectCard({
           <p className="break-all font-semibold">{formatTokenAmount(project.remainingAmount, decimals)} {currencyLabel(project.token)}</p>
         </div>
       </div>
+
+      {project.status !== ProjectStatus.Resolved && project.createdAt ? (
+        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-medium text-emerald-900">Live escrow cycle</span>
+            <span className="text-emerald-700">{lifecycleRemaining}</span>
+          </div>
+          <Progress value={lifecycleProgress} />
+        </div>
+      ) : null}
 
       {project.status === ProjectStatus.UnderReview ? (
         <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
@@ -179,7 +205,27 @@ export function ProjectCard({
 
         {project.status === ProjectStatus.UnderReview && isClient && mode === "client" ? (
           <>
-            <Button size="sm" disabled={isWriting} onClick={() => onApprove(project.id)}>Release</Button>
+            <a
+              className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors ${
+                project.submissionCid
+                  ? "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100"
+                  : "border border-zinc-200 bg-zinc-100 text-zinc-400 pointer-events-none"
+              }`}
+              href={project.submissionCid ? `https://gateway.pinata.cloud/ipfs/${project.submissionCid}` : "#"}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download Work
+            </a>
+            <Button
+              size="sm"
+              className={project.submissionCid ? "bg-emerald-600 text-white hover:bg-emerald-500" : ""}
+              variant={project.submissionCid ? "default" : "outline"}
+              disabled={isWriting || !project.submissionCid}
+              onClick={() => onApprove(project.id)}
+            >
+              Release Token
+            </Button>
             <Button size="sm" variant="destructive" disabled={isWriting} onClick={() => onDispute(project.id)}>Dispute</Button>
           </>
         ) : null}

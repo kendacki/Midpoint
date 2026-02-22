@@ -22,6 +22,11 @@ export default function ClientPage() {
   const [error, setError] = useState<string | null>(null);
 
   const clientActiveEscrows = midpoint.clientProjects.filter((project) => project.status !== ProjectStatus.Resolved);
+  const activeCount = midpoint.clientProjects.filter((project) => project.status === ProjectStatus.AwaitingSubmission).length;
+  const pendingCount = midpoint.clientProjects.filter(
+    (project) => project.status === ProjectStatus.UnderReview || project.status === ProjectStatus.Disputed
+  ).length;
+  const completedCount = midpoint.clientProjects.filter((project) => project.status === ProjectStatus.Resolved).length;
 
   async function handleCreateNative() {
     setError(null);
@@ -68,6 +73,20 @@ export default function ClientPage() {
           <div className="glass-panel interactive-lift reveal-up rounded-3xl p-6">
             <h1 className="font-montserrat text-2xl font-bold text-zinc-900 sm:text-3xl">Client Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600">Create escrow deals and manage submissions, disputes, and payouts.</p>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="mini-glass">
+                <p className="text-xs uppercase text-zinc-500">Active</p>
+                <p className="text-2xl font-semibold text-zinc-900">{activeCount}</p>
+              </div>
+              <div className="mini-glass">
+                <p className="text-xs uppercase text-zinc-500">Pending</p>
+                <p className="text-2xl font-semibold text-zinc-900">{pendingCount}</p>
+              </div>
+              <div className="mini-glass">
+                <p className="text-xs uppercase text-zinc-500">Completed</p>
+                <p className="text-2xl font-semibold text-zinc-900">{completedCount}</p>
+              </div>
+            </div>
             <div className="mt-5 space-y-3">
               <Input value={freelancer} onChange={(e) => setFreelancer(e.target.value)} placeholder="Freelancer wallet address (0x...)" />
               <Input

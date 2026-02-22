@@ -37,6 +37,7 @@ export type MidpointProject = {
   burnedIntervals: number;
   status: ProjectStatus;
   exists: boolean;
+  createdAt: number;
   submissionCid: string;
   description: string;
   previewBurn: bigint;
@@ -177,6 +178,74 @@ export function useMidpoint() {
 
   const ids = scopedProjectIds;
 
+  const { data: createdAtById = {}, isLoading: isLoadingCreatedAt } = useQuery({
+    queryKey: ["midpoint-created-at", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
+    enabled: Boolean(escrowAddress && publicClient && address && ids.length),
+    queryFn: async () => {
+      if (!escrowAddress || !publicClient || !address || !ids.length) return {} as Record<string, number>;
+
+      const allLogs = await Promise.all([
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV1,
+          args: { client: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }).catch(() => []),
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV1,
+          args: { freelancer: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }).catch(() => []),
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV2,
+          args: { client: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }).catch(() => []),
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV2,
+          args: { freelancer: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }).catch(() => []),
+      ]);
+
+      const earliestBlockByProject = new Map<bigint, bigint>();
+      for (const group of allLogs) {
+        for (const log of group) {
+          if (!log.args.projectId || !log.blockNumber) continue;
+          const current = earliestBlockByProject.get(log.args.projectId);
+          if (current === undefined || log.blockNumber < current) {
+            earliestBlockByProject.set(log.args.projectId, log.blockNumber);
+          }
+        }
+      }
+
+      const uniqueBlocks = Array.from(new Set(Array.from(earliestBlockByProject.values()).map((v) => v.toString()))).map(
+        (v) => BigInt(v)
+      );
+      const blockTimestampByNumber = new Map<bigint, number>();
+      await Promise.all(
+        uniqueBlocks.map(async (blockNumber) => {
+          const block = await publicClient.getBlock({ blockNumber });
+          blockTimestampByNumber.set(blockNumber, Number(block.timestamp));
+        })
+      );
+
+      const result: Record<string, number> = {};
+      for (const [projectId, blockNumber] of earliestBlockByProject.entries()) {
+        result[projectId.toString()] = blockTimestampByNumber.get(blockNumber) ?? 0;
+      }
+      return result;
+    },
+    refetchInterval: 20_000,
+  });
+
   const { data: supportsProjectDescription = false } = useQuery({
     queryKey: ["midpoint-supports-project-description", escrowAddress],
     enabled: Boolean(escrowAddress && publicClient),
@@ -263,6 +332,7 @@ export function useMidpoint() {
           burnedIntervals: Number(raw[7]),
           status: Number(raw[8]) as ProjectStatus,
           exists: raw[9],
+          createdAt: createdAtById[id.toString()] ?? 0,
           submissionCid: cidResult?.status === "success" ? (cidResult.result as string) : "",
           description: descriptionResult?.status === "success" ? (descriptionResult.result as string) : "",
           previewBurn: burnResult?.status === "success" ? (burnResult.result as bigint) : 0n,
@@ -270,7 +340,7 @@ export function useMidpoint() {
       })
       .filter((project): project is MidpointProject => Boolean(project && project.exists))
       .sort((a, b) => Number(b.id - a.id));
-  }, [contractData, ids]);
+  }, [contractData, createdAtById, ids]);
 
   const { data: history = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ["midpoint-history", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
@@ -529,7 +599,7 @@ export function useMidpoint() {
     disconnect,
     escrowAddress,
     usdcAddress,
-    isLoading: isLoadingScopedProjects || isLoadingProjects || isLoadingHistory,
+    isLoading: isLoadingScopedProjects || isLoadingProjects || isLoadingHistory || isLoadingCreatedAt,
     projects,
     activeProjects,
     completedProjects,
