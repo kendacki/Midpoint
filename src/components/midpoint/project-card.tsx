@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceStrict } from "date-fns";
 import { Address, zeroAddress } from "viem";
-import { Flame, Upload } from "lucide-react";
+import { Flame, Loader2, Upload } from "lucide-react";
 import { MidpointProject, ProjectStatus } from "@/hooks/use-midpoint";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,7 @@ export function ProjectCard({
   isWriting: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [releasing, setReleasing] = useState(false);
   const [settlementCut, setSettlementCut] = useState("5000");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [legacyAnchorSec, setLegacyAnchorSec] = useState(() => readLocalAnchor(project.id));
@@ -110,6 +111,7 @@ export function ProjectCard({
   const isFreelancer = Boolean(me && project.freelancer.toLowerCase() === me.toLowerCase());
   const isUSDC = project.token !== zeroAddress;
   const decimals = isUSDC ? 6 : 18;
+  const submissionUrl = project.submissionCid ? `https://gateway.pinata.cloud/ipfs/${project.submissionCid}` : null;
 
   const reviewProgress = useMemo(() => {
     if (effectiveStatus !== ProjectStatus.UnderReview || !project.reviewDeadline) return 0;
@@ -264,28 +266,42 @@ export function ProjectCard({
           </label>
         ) : null}
 
-        {effectiveStatus === ProjectStatus.UnderReview && isClient && mode === "client" ? (
+        {effectiveStatus === ProjectStatus.UnderReview && isClient && mode === "client" && Boolean(submissionUrl) ? (
           <>
             <a
               className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors ${
-                project.submissionCid
+                submissionUrl
                   ? "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100"
                   : "border border-zinc-200 bg-zinc-100 text-zinc-400 pointer-events-none"
               }`}
-              href={project.submissionCid ? `https://gateway.pinata.cloud/ipfs/${project.submissionCid}` : "#"}
+              href={submissionUrl ?? "#"}
               target="_blank"
               rel="noreferrer"
             >
-              Download Work
+              Download Document
             </a>
             <Button
               size="sm"
-              className={project.submissionCid ? "bg-emerald-600 text-white hover:bg-emerald-500" : ""}
-              variant={project.submissionCid ? "default" : "outline"}
-              disabled={isWriting || !project.submissionCid}
-              onClick={() => onApprove(project.id)}
+              className={submissionUrl ? "bg-emerald-600 text-white hover:bg-emerald-500" : ""}
+              variant={submissionUrl ? "default" : "outline"}
+              disabled={isWriting || releasing || !submissionUrl}
+              onClick={async () => {
+                setReleasing(true);
+                try {
+                  await onApprove(project.id);
+                } finally {
+                  setReleasing(false);
+                }
+              }}
             >
-              Release Token
+              {releasing ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </span>
+              ) : (
+                "Release Tokens"
+              )}
             </Button>
             <Button size="sm" variant="destructive" disabled={isWriting} onClick={() => onDispute(project.id)}>Dispute</Button>
           </>
@@ -298,10 +314,10 @@ export function ProjectCard({
         ) : null}
       </div>
 
-      {project.submissionCid ? (
+      {submissionUrl ? (
         <a
           className="mt-3 inline-block text-sm text-blue-700 underline"
-          href={`https://gateway.pinata.cloud/ipfs/${project.submissionCid}`}
+          href={submissionUrl}
           target="_blank"
           rel="noreferrer"
         >

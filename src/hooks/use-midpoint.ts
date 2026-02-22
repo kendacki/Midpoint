@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -74,6 +74,7 @@ const projectResolvedEvent = parseAbiItem(
 );
 const timeoutClaimedEvent = parseAbiItem("event TimeoutClaimed(uint256 indexed projectId,uint256 amount)");
 const reviewApprovedEvent = parseAbiItem("event ReviewApproved(uint256 indexed projectId,uint256 amount)");
+const AMOY_FEE_CEILING = parseUnits("50", 9);
 
 const historyEventDefs = [
   { label: "Project Created", event: projectCreatedEventV1 },
@@ -174,8 +175,9 @@ export function useMidpoint() {
 
       return Array.from(ids).sort((a, b) => Number(b - a));
     },
-    staleTime: 15_000,
-    refetchInterval: 10_000,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
   });
 
   const ids = scopedProjectIds;
@@ -255,7 +257,8 @@ export function useMidpoint() {
       }
       return result;
     },
-    refetchInterval: 20_000,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: statusMetaById = {}, isLoading: isLoadingStatusMeta } = useQuery({
@@ -269,47 +272,94 @@ export function useMidpoint() {
         >;
       }
 
-      const entries = await Promise.all(
-        ids.map(async (id) => {
-          const [submittedLogs, resolvedLogs] = await Promise.all([
-            publicClient
-              .getLogs({
-                address: escrowAddress,
-                event: workSubmittedEvent,
-                args: { projectId: id },
-                fromBlock: 0n,
-                toBlock: "latest",
-              })
-              .catch(() => []),
-            publicClient
-              .getLogs({
-                address: escrowAddress,
-                event: projectResolvedEvent,
-                args: { projectId: id },
-                fromBlock: 0n,
-                toBlock: "latest",
-              })
-              .catch(() => []),
-          ]);
+      const targetIds = new Set(ids.map((id) => id.toString()));
+      const result: Record<
+        string,
+        {
+          hasSubmissionSignal: boolean;
+          hasResolvedSignal: boolean;
+          submissionCid: string;
+          resolvedFreelancerAmount: bigint;
+          latestSubmissionBlock: bigint;
+          latestResolvedBlock: bigint;
+        }
+      > = {};
 
-          const latestSubmitted = submittedLogs[submittedLogs.length - 1];
-          const latestResolved = resolvedLogs[resolvedLogs.length - 1];
+      const [submittedLogs, resolvedLogs] = await Promise.all([
+        publicClient
+          .getLogs({
+            address: escrowAddress,
+            event: workSubmittedEvent,
+            fromBlock: 0n,
+            toBlock: "latest",
+          })
+          .catch(() => []),
+        publicClient
+          .getLogs({
+            address: escrowAddress,
+            event: projectResolvedEvent,
+            fromBlock: 0n,
+            toBlock: "latest",
+          })
+          .catch(() => []),
+      ]);
 
-          return [
-            id.toString(),
-            {
-              hasSubmissionSignal: submittedLogs.length > 0,
-              hasResolvedSignal: resolvedLogs.length > 0,
-              submissionCid: (latestSubmitted?.args.ipfsCid as string | undefined) ?? "",
-              resolvedFreelancerAmount: (latestResolved?.args.freelancerAmount as bigint | undefined) ?? 0n,
-            },
-          ] as const;
-        })
-      );
+      for (const log of submittedLogs) {
+        const projectId = log.args.projectId;
+        if (!projectId) continue;
+        const key = projectId.toString();
+        if (!targetIds.has(key)) continue;
+        const prior = result[key];
+        const blockNumber = log.blockNumber ?? 0n;
+        if (!prior || blockNumber >= prior.latestSubmissionBlock) {
+          result[key] = {
+            hasSubmissionSignal: true,
+            hasResolvedSignal: prior?.hasResolvedSignal ?? false,
+            submissionCid: (log.args.ipfsCid as string | undefined) ?? prior?.submissionCid ?? "",
+            resolvedFreelancerAmount: prior?.resolvedFreelancerAmount ?? 0n,
+            latestSubmissionBlock: blockNumber,
+            latestResolvedBlock: prior?.latestResolvedBlock ?? 0n,
+          };
+        }
+      }
 
-      return Object.fromEntries(entries);
+      for (const log of resolvedLogs) {
+        const projectId = log.args.projectId;
+        if (!projectId) continue;
+        const key = projectId.toString();
+        if (!targetIds.has(key)) continue;
+        const prior = result[key];
+        const blockNumber = log.blockNumber ?? 0n;
+        if (!prior || blockNumber >= prior.latestResolvedBlock) {
+          result[key] = {
+            hasSubmissionSignal: prior?.hasSubmissionSignal ?? false,
+            hasResolvedSignal: true,
+            submissionCid: prior?.submissionCid ?? "",
+            resolvedFreelancerAmount: (log.args.freelancerAmount as bigint | undefined) ?? 0n,
+            latestSubmissionBlock: prior?.latestSubmissionBlock ?? 0n,
+            latestResolvedBlock: blockNumber,
+          };
+        }
+      }
+
+      const compact: Record<
+        string,
+        { hasSubmissionSignal: boolean; hasResolvedSignal: boolean; submissionCid: string; resolvedFreelancerAmount: bigint }
+      > = {};
+      for (const id of ids) {
+        const key = id.toString();
+        const meta = result[key];
+        compact[key] = {
+          hasSubmissionSignal: meta?.hasSubmissionSignal ?? false,
+          hasResolvedSignal: meta?.hasResolvedSignal ?? false,
+          submissionCid: meta?.submissionCid ?? "",
+          resolvedFreelancerAmount: meta?.resolvedFreelancerAmount ?? 0n,
+        };
+      }
+      return compact;
     },
-    refetchInterval: 20_000,
+    refetchInterval: 45_000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: eventDescriptionById = {}, isLoading: isLoadingEventDescriptions } = useQuery({
@@ -346,7 +396,8 @@ export function useMidpoint() {
       }
       return result;
     },
-    refetchInterval: 20_000,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: supportsProjectDescription = false } = useQuery({
@@ -405,7 +456,8 @@ export function useMidpoint() {
     allowFailure: true,
     query: {
       enabled: Boolean(escrowAddress) && ids.length > 0,
-      refetchInterval: 10_000,
+      refetchInterval: 20_000,
+      refetchOnWindowFocus: false,
     },
   });
 
@@ -460,41 +512,42 @@ export function useMidpoint() {
     queryFn: async () => {
       if (!escrowAddress || !publicClient || !ids.length) return [];
 
-      const calls: Promise<MidpointHistoryEntry[]>[] = [];
-      for (const id of ids) {
-        for (const def of historyEventDefs) {
-          const call = publicClient
+      const targetIds = new Set(ids.map((id) => id.toString()));
+      const logGroups = await Promise.all(
+        historyEventDefs.map((def) =>
+          publicClient
             .getLogs({
               address: escrowAddress,
               event: def.event,
-              args: { projectId: id },
               fromBlock: 0n,
               toBlock: "latest",
             })
             .then((logs) =>
-              logs.map(
-                (log) =>
-                  ({
-                    projectId: id,
+              logs
+                .map((log) => {
+                  const projectId = log.args.projectId;
+                  if (!projectId) return null;
+                  if (!targetIds.has(projectId.toString())) return null;
+                  return {
+                    projectId,
                     event: def.label,
                     txHash: log.transactionHash,
                     blockNumber: log.blockNumber,
-                  }) satisfies MidpointHistoryEntry
-              )
+                  } satisfies MidpointHistoryEntry;
+                })
+                .filter((entry): entry is MidpointHistoryEntry => Boolean(entry))
             )
-            .catch(() => []);
-          calls.push(call);
-        }
-      }
-
-      const logGroups = await Promise.all(calls);
+            .catch(() => [] as MidpointHistoryEntry[])
+        )
+      );
       return logGroups
         .flat()
         .sort((a, b) =>
           a.blockNumber === b.blockNumber ? 0 : a.blockNumber > b.blockNumber ? -1 : 1
         );
     },
-    refetchInterval: 20_000,
+    refetchInterval: 45_000,
+    refetchOnWindowFocus: false,
   });
 
   const activeProjects = projects.filter((project) => project.status !== ProjectStatus.Resolved);
@@ -553,6 +606,51 @@ export function useMidpoint() {
     await queryClient.invalidateQueries();
   }
 
+  useEffect(() => {
+    if (!publicClient || !escrowAddress || !isConnected) return;
+
+    const refreshMidpointViews = () => {
+      void queryClient.invalidateQueries({ queryKey: ["midpoint-scoped-project-ids"] });
+      void queryClient.invalidateQueries({ queryKey: ["midpoint-status-meta"] });
+      void queryClient.invalidateQueries({ queryKey: ["midpoint-history"] });
+      void queryClient.invalidateQueries({ queryKey: ["midpoint-event-descriptions"] });
+      void queryClient.invalidateQueries({ queryKey: ["midpoint-created-at"] });
+    };
+
+    const unwatchSubmitted = publicClient.watchContractEvent({
+      address: escrowAddress,
+      event: workSubmittedEvent,
+      onLogs: (logs) => {
+        if (!logs.length) return;
+        refreshMidpointViews();
+      },
+    });
+
+    const unwatchResolved = publicClient.watchContractEvent({
+      address: escrowAddress,
+      event: projectResolvedEvent,
+      onLogs: (logs) => {
+        if (!logs.length) return;
+        refreshMidpointViews();
+      },
+    });
+
+    const unwatchApproved = publicClient.watchContractEvent({
+      address: escrowAddress,
+      event: reviewApprovedEvent,
+      onLogs: (logs) => {
+        if (!logs.length) return;
+        refreshMidpointViews();
+      },
+    });
+
+    return () => {
+      unwatchSubmitted();
+      unwatchResolved();
+      unwatchApproved();
+    };
+  }, [isConnected, publicClient, queryClient]);
+
   async function connectWallet() {
     await connectAsync({ connector: injected() });
   }
@@ -569,14 +667,21 @@ export function useMidpoint() {
     const txRequest: Record<string, unknown> = { ...args };
 
     if (feeEstimate.maxFeePerGas || feeEstimate.maxPriorityFeePerGas) {
+      const estimatedPriority = feeEstimate.maxPriorityFeePerGas ?? MIN_AMOY_PRIORITY_FEE;
       const maxPriorityFeePerGas =
-        feeEstimate.maxPriorityFeePerGas && feeEstimate.maxPriorityFeePerGas > MIN_AMOY_PRIORITY_FEE
-          ? feeEstimate.maxPriorityFeePerGas
-          : MIN_AMOY_PRIORITY_FEE;
+        estimatedPriority < MIN_AMOY_PRIORITY_FEE
+          ? MIN_AMOY_PRIORITY_FEE
+          : estimatedPriority > AMOY_FEE_CEILING
+            ? AMOY_FEE_CEILING
+            : estimatedPriority;
+
       const estimatedMaxFee = feeEstimate.maxFeePerGas ?? maxPriorityFeePerGas * 2n;
+      const minSafeMaxFee = maxPriorityFeePerGas * 2n;
+      const normalizedMaxFee = estimatedMaxFee < minSafeMaxFee ? minSafeMaxFee : estimatedMaxFee;
+      const maxFeePerGas = normalizedMaxFee > AMOY_FEE_CEILING ? AMOY_FEE_CEILING : normalizedMaxFee;
 
       txRequest.maxPriorityFeePerGas = maxPriorityFeePerGas;
-      txRequest.maxFeePerGas = estimatedMaxFee > maxPriorityFeePerGas ? estimatedMaxFee : maxPriorityFeePerGas * 2n;
+      txRequest.maxFeePerGas = maxFeePerGas > maxPriorityFeePerGas ? maxFeePerGas : maxPriorityFeePerGas * 2n;
     } else if (feeEstimate.gasPrice) {
       txRequest.gasPrice = feeEstimate.gasPrice;
     }
