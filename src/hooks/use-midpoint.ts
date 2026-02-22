@@ -13,7 +13,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { Address, decodeEventLog, formatUnits, parseAbiItem, parseEther, parseUnits } from "viem";
+import { Address, decodeEventLog, formatUnits, parseAbiItem, parseEther, parseUnits, zeroAddress } from "viem";
 import { midpointEscrowAbi } from "@/lib/abis/midpointEscrow";
 
 export enum ProjectStatus {
@@ -40,6 +40,8 @@ export type MidpointProject = {
   createdAt: number;
   submissionCid: string;
   description: string;
+  hasSubmissionSignal: boolean;
+  hasResolvedSignal: boolean;
   previewBurn: bigint;
 };
 
@@ -76,13 +78,13 @@ const reviewApprovedEvent = parseAbiItem("event ReviewApproved(uint256 indexed p
 const historyEventDefs = [
   { label: "Project Created", event: projectCreatedEventV1 },
   { label: "Project Created", event: projectCreatedEventV2 },
-  { label: "Work Submitted", event: workSubmittedEvent },
+  { label: "Submitted", event: workSubmittedEvent },
   { label: "Project Disputed", event: projectDisputedEvent },
   { label: "Dispute Burn Applied", event: disputeDecayEvent },
   { label: "Settlement Proposed", event: settlementProposedEvent },
-  { label: "Project Resolved", event: projectResolvedEvent },
-  { label: "Timeout Claimed", event: timeoutClaimedEvent },
-  { label: "Review Approved", event: reviewApprovedEvent },
+  { label: "Completed (Settlement)", event: projectResolvedEvent },
+  { label: "Completed (Timeout Claim)", event: timeoutClaimedEvent },
+  { label: "Completed (Released)", event: reviewApprovedEvent },
 ] as const;
 
 export function useMidpoint() {
@@ -256,6 +258,60 @@ export function useMidpoint() {
     refetchInterval: 20_000,
   });
 
+  const { data: statusMetaById = {}, isLoading: isLoadingStatusMeta } = useQuery({
+    queryKey: ["midpoint-status-meta", escrowAddress, ids.map((id) => id.toString()).join(",")],
+    enabled: Boolean(escrowAddress && publicClient && ids.length),
+    queryFn: async () => {
+      if (!escrowAddress || !publicClient || !ids.length) {
+        return {} as Record<
+          string,
+          { hasSubmissionSignal: boolean; hasResolvedSignal: boolean; submissionCid: string; resolvedFreelancerAmount: bigint }
+        >;
+      }
+
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          const [submittedLogs, resolvedLogs] = await Promise.all([
+            publicClient
+              .getLogs({
+                address: escrowAddress,
+                event: workSubmittedEvent,
+                args: { projectId: id },
+                fromBlock: 0n,
+                toBlock: "latest",
+              })
+              .catch(() => []),
+            publicClient
+              .getLogs({
+                address: escrowAddress,
+                event: projectResolvedEvent,
+                args: { projectId: id },
+                fromBlock: 0n,
+                toBlock: "latest",
+              })
+              .catch(() => []),
+          ]);
+
+          const latestSubmitted = submittedLogs[submittedLogs.length - 1];
+          const latestResolved = resolvedLogs[resolvedLogs.length - 1];
+
+          return [
+            id.toString(),
+            {
+              hasSubmissionSignal: submittedLogs.length > 0,
+              hasResolvedSignal: resolvedLogs.length > 0,
+              submissionCid: (latestSubmitted?.args.ipfsCid as string | undefined) ?? "",
+              resolvedFreelancerAmount: (latestResolved?.args.freelancerAmount as bigint | undefined) ?? 0n,
+            },
+          ] as const;
+        })
+      );
+
+      return Object.fromEntries(entries);
+    },
+    refetchInterval: 20_000,
+  });
+
   const { data: eventDescriptionById = {}, isLoading: isLoadingEventDescriptions } = useQuery({
     queryKey: ["midpoint-event-descriptions", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
     enabled: Boolean(escrowAddress && publicClient && address),
@@ -363,6 +419,7 @@ export function useMidpoint() {
         const cidResult = contractData[baseIndex + 1];
         const burnResult = contractData[baseIndex + 2];
         const descriptionResult = contractData[baseIndex + 3];
+        const statusMeta = statusMetaById[id.toString()];
 
         if (projectResult.status !== "success" || !projectResult.result) return null;
         const raw = projectResult.result as RawProject;
@@ -380,17 +437,22 @@ export function useMidpoint() {
           status: Number(raw[8]) as ProjectStatus,
           exists: raw[9],
           createdAt: createdAtById[id.toString()] ?? 0,
-          submissionCid: cidResult?.status === "success" ? (cidResult.result as string) : "",
+          submissionCid:
+            cidResult?.status === "success" && (cidResult.result as string)
+              ? (cidResult.result as string)
+              : (statusMeta?.submissionCid ?? ""),
           description:
             descriptionResult?.status === "success" && (descriptionResult.result as string)
               ? (descriptionResult.result as string)
               : (eventDescriptionById[id.toString()] ?? localDescriptionById[id.toString()] ?? ""),
+          hasSubmissionSignal: statusMeta?.hasSubmissionSignal ?? false,
+          hasResolvedSignal: statusMeta?.hasResolvedSignal ?? false,
           previewBurn: burnResult?.status === "success" ? (burnResult.result as bigint) : 0n,
         } satisfies MidpointProject;
       })
       .filter((project): project is MidpointProject => Boolean(project && project.exists))
       .sort((a, b) => Number(b.id - a.id));
-  }, [contractData, createdAtById, eventDescriptionById, ids, localDescriptionById]);
+  }, [contractData, createdAtById, eventDescriptionById, ids, localDescriptionById, statusMetaById]);
 
   const { data: history = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ["midpoint-history", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
@@ -464,12 +526,23 @@ export function useMidpoint() {
   );
 
   const pendingSubmissions = freelancerProjects.filter(
-    (project) => project.status === ProjectStatus.AwaitingSubmission
+    (project) => project.status === ProjectStatus.AwaitingSubmission && !project.submissionCid && !project.hasSubmissionSignal
   );
   const claimableFunds = freelancerProjects.filter((project) => {
-    if (project.status !== ProjectStatus.UnderReview) return false;
+    const isUnderReview =
+      project.status === ProjectStatus.UnderReview ||
+      (project.status === ProjectStatus.AwaitingSubmission && (project.submissionCid || project.hasSubmissionSignal));
+    if (!isUnderReview) return false;
     return Number(project.reviewDeadline) * 1000 < Date.now();
   });
+  const freelancerReleasedPol = freelancerProjects.reduce((acc, project) => {
+    if (project.token !== zeroAddress) return acc;
+    return acc + (statusMetaById[project.id.toString()]?.resolvedFreelancerAmount ?? 0n);
+  }, 0n);
+  const freelancerReleasedUsdc = freelancerProjects.reduce((acc, project) => {
+    if (project.token === zeroAddress) return acc;
+    return acc + (statusMetaById[project.id.toString()]?.resolvedFreelancerAmount ?? 0n);
+  }, 0n);
 
   const clientProjectIds = new Set(clientProjects.map((project) => project.id.toString()));
   const freelancerProjectIds = new Set(freelancerProjects.map((project) => project.id.toString()));
@@ -708,7 +781,12 @@ export function useMidpoint() {
     escrowAddress,
     usdcAddress,
     isLoading:
-      isLoadingScopedProjects || isLoadingProjects || isLoadingHistory || isLoadingCreatedAt || isLoadingEventDescriptions,
+      isLoadingScopedProjects ||
+      isLoadingProjects ||
+      isLoadingHistory ||
+      isLoadingCreatedAt ||
+      isLoadingStatusMeta ||
+      isLoadingEventDescriptions,
     projects,
     activeProjects,
     completedProjects,
@@ -719,6 +797,8 @@ export function useMidpoint() {
     freelancerProjects,
     pendingSubmissions,
     claimableFunds,
+    freelancerReleasedPol,
+    freelancerReleasedUsdc,
     history,
     clientHistory,
     freelancerHistory,

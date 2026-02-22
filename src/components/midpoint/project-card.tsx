@@ -41,7 +41,7 @@ function shortAddress(address: string) {
 }
 
 function statusLabel(status: ProjectStatus) {
-  if (status === ProjectStatus.AwaitingSubmission) return "Pending Upload";
+  if (status === ProjectStatus.AwaitingSubmission) return "Awaiting Submission";
   if (status === ProjectStatus.UnderReview) return "Submitted";
   if (status === ProjectStatus.Disputed) return "Disputed";
   return "Completed";
@@ -81,9 +81,11 @@ export function ProjectCard({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [legacyAnchorSec, setLegacyAnchorSec] = useState(() => readLocalAnchor(project.id));
   const effectiveStatus =
-    project.status === ProjectStatus.AwaitingSubmission && project.submissionCid
-      ? ProjectStatus.UnderReview
-      : project.status;
+    project.status !== ProjectStatus.Resolved && project.hasResolvedSignal
+      ? ProjectStatus.Resolved
+      : project.status === ProjectStatus.AwaitingSubmission && (project.submissionCid || project.hasSubmissionSignal)
+        ? ProjectStatus.UnderReview
+        : project.status;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);

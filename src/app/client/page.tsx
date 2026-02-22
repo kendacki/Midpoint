@@ -21,9 +21,22 @@ export default function ClientPage() {
   const [createdType, setCreatedType] = useState<"pol" | "usdc" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const clientActiveEscrows = midpoint.clientProjects.filter((project) => project.status !== ProjectStatus.Resolved);
-  const activeCount = midpoint.clientProjects.filter((project) => project.status === ProjectStatus.AwaitingSubmission).length;
-  const completedCount = midpoint.clientProjects.filter((project) => project.status === ProjectStatus.Resolved).length;
+  const effectiveStatus = (project: (typeof midpoint.clientProjects)[number]) => {
+    if (project.status !== ProjectStatus.Resolved && project.hasResolvedSignal) return ProjectStatus.Resolved;
+    if (project.status === ProjectStatus.AwaitingSubmission && (project.submissionCid || project.hasSubmissionSignal)) {
+      return ProjectStatus.UnderReview;
+    }
+    return project.status;
+  };
+  const clientActiveEscrows = midpoint.clientProjects.filter(
+    (project) => effectiveStatus(project) !== ProjectStatus.Resolved
+  );
+  const activeCount = midpoint.clientProjects.filter(
+    (project) => effectiveStatus(project) === ProjectStatus.AwaitingSubmission
+  ).length;
+  const completedCount = midpoint.clientProjects.filter(
+    (project) => effectiveStatus(project) === ProjectStatus.Resolved
+  ).length;
 
   async function handleCreateNative() {
     setError(null);

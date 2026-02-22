@@ -8,8 +8,22 @@ import { ProjectStatus, useMidpoint } from "@/hooks/use-midpoint";
 
 export default function FreelancerPage() {
   const midpoint = useMidpoint();
-  const activeCount = midpoint.freelancerProjects.filter((project) => project.status === ProjectStatus.AwaitingSubmission).length;
-  const completedCount = midpoint.freelancerProjects.filter((project) => project.status === ProjectStatus.Resolved).length;
+  const effectiveStatus = (project: (typeof midpoint.freelancerProjects)[number]) => {
+    if (project.status !== ProjectStatus.Resolved && project.hasResolvedSignal) return ProjectStatus.Resolved;
+    if (project.status === ProjectStatus.AwaitingSubmission && (project.submissionCid || project.hasSubmissionSignal)) {
+      return ProjectStatus.UnderReview;
+    }
+    return project.status;
+  };
+  const activeCount = midpoint.freelancerProjects.filter(
+    (project) => effectiveStatus(project) === ProjectStatus.AwaitingSubmission
+  ).length;
+  const completedCount = midpoint.freelancerProjects.filter(
+    (project) => effectiveStatus(project) === ProjectStatus.Resolved
+  ).length;
+  const pendingSubmissionCount = midpoint.freelancerProjects.filter(
+    (project) => effectiveStatus(project) === ProjectStatus.AwaitingSubmission
+  ).length;
 
   return (
     <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
@@ -33,11 +47,14 @@ export default function FreelancerPage() {
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="mini-glass interactive-lift">
                 <p className="text-xs uppercase text-zinc-500">Pending Submissions</p>
-                <p className="text-2xl font-semibold text-zinc-900">{midpoint.pendingSubmissions.length}</p>
+                <p className="text-2xl font-semibold text-zinc-900">{pendingSubmissionCount}</p>
               </div>
               <div className="mini-glass interactive-lift">
                 <p className="text-xs uppercase text-zinc-500">Claimable Funds</p>
-                <p className="text-2xl font-semibold text-zinc-900">{midpoint.claimableFunds.length}</p>
+                <p className="text-xl font-semibold text-zinc-900">
+                  {midpoint.formatTokenAmount(midpoint.freelancerReleasedPol)} POL
+                </p>
+                <p className="text-sm text-zinc-600">{midpoint.formatTokenAmount(midpoint.freelancerReleasedUsdc, 6)} USDC released</p>
               </div>
             </div>
           </div>
