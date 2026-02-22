@@ -256,6 +256,43 @@ export function useMidpoint() {
     refetchInterval: 20_000,
   });
 
+  const { data: eventDescriptionById = {}, isLoading: isLoadingEventDescriptions } = useQuery({
+    queryKey: ["midpoint-event-descriptions", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
+    enabled: Boolean(escrowAddress && publicClient && address),
+    queryFn: async () => {
+      if (!escrowAddress || !publicClient || !address) return {} as Record<string, string>;
+
+      const logs = await Promise.all([
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV2,
+          args: { client: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }).catch(() => []),
+        publicClient.getLogs({
+          address: escrowAddress,
+          event: projectCreatedEventV2,
+          args: { freelancer: address },
+          fromBlock: 0n,
+          toBlock: "latest",
+        }).catch(() => []),
+      ]);
+
+      const result: Record<string, string> = {};
+      for (const group of logs) {
+        for (const log of group) {
+          const projectId = log.args.projectId;
+          const description = log.args.description;
+          if (!projectId || !description) continue;
+          result[projectId.toString()] = description;
+        }
+      }
+      return result;
+    },
+    refetchInterval: 20_000,
+  });
+
   const { data: supportsProjectDescription = false } = useQuery({
     queryKey: ["midpoint-supports-project-description", escrowAddress],
     enabled: Boolean(escrowAddress && publicClient),
@@ -347,13 +384,13 @@ export function useMidpoint() {
           description:
             descriptionResult?.status === "success" && (descriptionResult.result as string)
               ? (descriptionResult.result as string)
-              : (localDescriptionById[id.toString()] ?? ""),
+              : (eventDescriptionById[id.toString()] ?? localDescriptionById[id.toString()] ?? ""),
           previewBurn: burnResult?.status === "success" ? (burnResult.result as bigint) : 0n,
         } satisfies MidpointProject;
       })
       .filter((project): project is MidpointProject => Boolean(project && project.exists))
       .sort((a, b) => Number(b.id - a.id));
-  }, [contractData, createdAtById, ids, localDescriptionById]);
+  }, [contractData, createdAtById, eventDescriptionById, ids, localDescriptionById]);
 
   const { data: history = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ["midpoint-history", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
@@ -670,7 +707,8 @@ export function useMidpoint() {
     disconnect,
     escrowAddress,
     usdcAddress,
-    isLoading: isLoadingScopedProjects || isLoadingProjects || isLoadingHistory || isLoadingCreatedAt,
+    isLoading:
+      isLoadingScopedProjects || isLoadingProjects || isLoadingHistory || isLoadingCreatedAt || isLoadingEventDescriptions,
     projects,
     activeProjects,
     completedProjects,
