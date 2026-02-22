@@ -17,6 +17,7 @@ export default function ClientPage() {
   const [nativeAmount, setNativeAmount] = useState("0.1");
   const [usdcAmount, setUsdcAmount] = useState("25");
   const [isCreating, setIsCreating] = useState(false);
+  const [triggeredType, setTriggeredType] = useState<"pol" | "usdc" | null>(null);
   const [createdType, setCreatedType] = useState<"pol" | "usdc" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +26,7 @@ export default function ClientPage() {
   async function handleCreateNative() {
     setError(null);
     setCreatedType(null);
+    setTriggeredType("pol");
     setIsCreating(true);
     try {
       await midpoint.createProjectNative(freelancer as Address, nativeAmount, description);
@@ -32,6 +34,7 @@ export default function ClientPage() {
       setDescription("");
       setCreatedType("pol");
     } catch (err) {
+      setTriggeredType(null);
       setError(err instanceof Error ? err.message : "Failed to create POL escrow");
     } finally {
       setIsCreating(false);
@@ -41,6 +44,7 @@ export default function ClientPage() {
   async function handleCreateUSDC() {
     setError(null);
     setCreatedType(null);
+    setTriggeredType("usdc");
     setIsCreating(true);
     try {
       await midpoint.createProjectUSDC(freelancer as Address, usdcAmount, description);
@@ -48,6 +52,7 @@ export default function ClientPage() {
       setDescription("");
       setCreatedType("usdc");
     } catch (err) {
+      setTriggeredType(null);
       setError(err instanceof Error ? err.message : "Failed to create USDC escrow");
     } finally {
       setIsCreating(false);
@@ -74,26 +79,34 @@ export default function ClientPage() {
                 <Input value={nativeAmount} onChange={(e) => setNativeAmount(e.target.value)} placeholder="POL amount" />
                 <Button
                   className={`!h-10 !rounded-xl ${
-                    createdType === "pol"
+                    createdType === "pol" || triggeredType === "pol"
                       ? "border border-emerald-300 bg-emerald-500/90 text-white"
                       : "glass-button"
                   }`}
                   onClick={handleCreateNative}
                   disabled={!midpoint.isConnected || isCreating || midpoint.isWriting}
                 >
-                  {createdType === "pol" ? "POL Escrow Created" : "Create POL Escrow"}
+                  {createdType === "pol"
+                    ? "POL Escrow Created"
+                    : triggeredType === "pol" && (isCreating || midpoint.isWriting)
+                      ? "POL Escrow Triggered"
+                      : "Create POL Escrow"}
                 </Button>
                 <Input value={usdcAmount} onChange={(e) => setUsdcAmount(e.target.value)} placeholder="USDC amount" />
                 <Button
                   className={`!h-10 !rounded-xl ${
-                    createdType === "usdc"
+                    createdType === "usdc" || triggeredType === "usdc"
                       ? "border border-emerald-300 bg-emerald-500/90 text-white"
                       : "glass-button"
                   }`}
                   onClick={handleCreateUSDC}
                   disabled={!midpoint.isConnected || isCreating || midpoint.isWriting}
                 >
-                  {createdType === "usdc" ? "USDC Escrow Created" : "Create USDC Escrow"}
+                  {createdType === "usdc"
+                    ? "USDC Escrow Created"
+                    : triggeredType === "usdc" && (isCreating || midpoint.isWriting)
+                      ? "USDC Escrow Triggered"
+                      : "Create USDC Escrow"}
                 </Button>
               </div>
               {error ? <p className="text-sm text-red-600">{error}</p> : null}
