@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDistanceStrict } from "date-fns";
 import { Address, zeroAddress } from "viem";
 import { Flame, Upload } from "lucide-react";
@@ -56,10 +56,16 @@ export function ProjectCard({
 }) {
   const [uploading, setUploading] = useState(false);
   const [settlementCut, setSettlementCut] = useState("5000");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const effectiveStatus =
     project.status === ProjectStatus.AwaitingSubmission && project.submissionCid
       ? ProjectStatus.UnderReview
       : project.status;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const isClient = Boolean(me && project.client.toLowerCase() === me.toLowerCase());
   const isFreelancer = Boolean(me && project.freelancer.toLowerCase() === me.toLowerCase());
@@ -68,18 +74,18 @@ export function ProjectCard({
 
   const reviewProgress = useMemo(() => {
     if (effectiveStatus !== ProjectStatus.UnderReview || !project.reviewDeadline) return 0;
-    const nowSec = Math.floor(Date.now() / 1000);
+    const nowSec = Math.floor(nowMs / 1000);
     const deadline = Number(project.reviewDeadline);
     const elapsed = REVIEW_SECONDS - Math.max(0, deadline - nowSec);
     return Math.max(0, Math.min(100, (elapsed / REVIEW_SECONDS) * 100));
-  }, [project.reviewDeadline, effectiveStatus]);
+  }, [project.reviewDeadline, effectiveStatus, nowMs]);
 
   const reviewRemaining = useMemo(() => {
     if (effectiveStatus !== ProjectStatus.UnderReview || !project.reviewDeadline) return "N/A";
-    const ms = Number(project.reviewDeadline) * 1000 - Date.now();
+    const ms = Number(project.reviewDeadline) * 1000 - nowMs;
     if (ms <= 0) return "Expired";
-    return formatDistanceStrict(Date.now(), Date.now() + ms);
-  }, [project.reviewDeadline, effectiveStatus]);
+    return formatDistanceStrict(nowMs, nowMs + ms);
+  }, [project.reviewDeadline, effectiveStatus, nowMs]);
 
   const nextBurnAt = useMemo(() => {
     if (effectiveStatus !== ProjectStatus.Disputed) return null;
@@ -89,25 +95,34 @@ export function ProjectCard({
 
   const burnRemaining = useMemo(() => {
     if (!nextBurnAt) return "N/A";
-    const ms = nextBurnAt - Date.now();
+    const ms = nextBurnAt - nowMs;
     if (ms <= 0) return "Ready to burn";
-    return formatDistanceStrict(Date.now(), Date.now() + ms);
-  }, [nextBurnAt]);
+    return formatDistanceStrict(nowMs, nowMs + ms);
+  }, [nextBurnAt, nowMs]);
+
+  const cycleAnchorSec = useMemo(() => {
+    if (project.disputeStartTime > 0n) return Number(project.disputeStartTime);
+    if (project.createdAt > 0) return project.createdAt;
+    return 0;
+  }, [project.createdAt, project.disputeStartTime]);
 
   const lifecycleProgress = useMemo(() => {
-    if (!project.createdAt || project.status === ProjectStatus.Resolved) return 0;
-    const nowSec = Math.floor(Date.now() / 1000);
-    const elapsed = Math.max(0, nowSec - project.createdAt);
-    return Math.max(0, Math.min(100, (elapsed / LIFECYCLE_SECONDS) * 100));
-  }, [project.createdAt, project.status]);
+    if (!cycleAnchorSec || effectiveStatus === ProjectStatus.Resolved) return 0;
+    const nowSec = Math.floor(nowMs / 1000);
+    const elapsed = Math.max(0, nowSec - cycleAnchorSec);
+    const cycleElapsed = elapsed % LIFECYCLE_SECONDS;
+    return Math.max(0, Math.min(100, (cycleElapsed / LIFECYCLE_SECONDS) * 100));
+  }, [cycleAnchorSec, effectiveStatus, nowMs]);
 
   const lifecycleRemaining = useMemo(() => {
-    if (!project.createdAt || project.status === ProjectStatus.Resolved) return "Completed";
-    const endsAtMs = (project.createdAt + LIFECYCLE_SECONDS) * 1000;
-    const ms = endsAtMs - Date.now();
-    if (ms <= 0) return "Cycle elapsed";
-    return formatDistanceStrict(Date.now(), Date.now() + ms);
-  }, [project.createdAt, project.status]);
+    if (!cycleAnchorSec || effectiveStatus === ProjectStatus.Resolved) return "Completed";
+    const nowSec = Math.floor(nowMs / 1000);
+    const elapsed = Math.max(0, nowSec - cycleAnchorSec);
+    const cycleElapsed = elapsed % LIFECYCLE_SECONDS;
+    const remainingSec = Math.max(0, LIFECYCLE_SECONDS - cycleElapsed);
+    if (remainingSec <= 0) return "Cycle elapsed";
+    return formatDistanceStrict(nowMs, nowMs + remainingSec * 1000);
+  }, [cycleAnchorSec, effectiveStatus, nowMs]);
 
   return (
     <article className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
@@ -135,10 +150,10 @@ export function ProjectCard({
         </div>
       </div>
 
-      {effectiveStatus !== ProjectStatus.Resolved && project.createdAt ? (
+      {effectiveStatus !== ProjectStatus.Resolved && cycleAnchorSec > 0 ? (
         <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-medium text-emerald-900">Live escrow cycle</span>
+            <span className="font-medium text-emerald-900">14-day burn timer</span>
             <span className="text-emerald-700">{lifecycleRemaining}</span>
           </div>
           <Progress value={lifecycleProgress} />
