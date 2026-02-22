@@ -13,7 +13,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { Address, formatUnits, parseAbiItem, parseEther, parseUnits } from "viem";
+import { Address, decodeEventLog, formatUnits, parseAbiItem, parseEther, parseUnits } from "viem";
 import { midpointEscrowAbi } from "@/lib/abis/midpointEscrow";
 
 export enum ProjectStatus {
@@ -177,6 +177,16 @@ export function useMidpoint() {
   });
 
   const ids = scopedProjectIds;
+  const localDescriptionById: Record<string, string> = (() => {
+    if (typeof window === "undefined" || !escrowAddress) return {};
+    try {
+      const key = `midpoint-local-desc:${escrowAddress.toLowerCase()}`;
+      const raw = window.localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  })();
 
   const { data: createdAtById = {}, isLoading: isLoadingCreatedAt } = useQuery({
     queryKey: ["midpoint-created-at", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
@@ -334,13 +344,16 @@ export function useMidpoint() {
           exists: raw[9],
           createdAt: createdAtById[id.toString()] ?? 0,
           submissionCid: cidResult?.status === "success" ? (cidResult.result as string) : "",
-          description: descriptionResult?.status === "success" ? (descriptionResult.result as string) : "",
+          description:
+            descriptionResult?.status === "success" && (descriptionResult.result as string)
+              ? (descriptionResult.result as string)
+              : (localDescriptionById[id.toString()] ?? ""),
           previewBurn: burnResult?.status === "success" ? (burnResult.result as bigint) : 0n,
         } satisfies MidpointProject;
       })
       .filter((project): project is MidpointProject => Boolean(project && project.exists))
       .sort((a, b) => Number(b.id - a.id));
-  }, [contractData, createdAtById, ids]);
+  }, [contractData, createdAtById, ids, localDescriptionById]);
 
   const { data: history = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ["midpoint-history", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
@@ -464,17 +477,73 @@ export function useMidpoint() {
     return hash;
   }
 
+  async function saveLocalDescriptionFromReceipt(hash: `0x${string}`, description: string) {
+    if (!publicClient || !escrowAddress || typeof window === "undefined") return;
+    const trimmed = description.trim();
+    if (!trimmed) return;
+
+    try {
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+      let projectId: bigint | undefined;
+
+      for (const log of receipt.logs) {
+        if (!log.address || log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
+
+        try {
+          const decodedV2 = decodeEventLog({
+            abi: [projectCreatedEventV2],
+            data: log.data,
+            topics: log.topics,
+          });
+          if (decodedV2.eventName === "ProjectCreated") {
+            projectId = decodedV2.args.projectId as bigint;
+            break;
+          }
+        } catch {
+          // Try V1 shape below.
+        }
+
+        try {
+          const decodedV1 = decodeEventLog({
+            abi: [projectCreatedEventV1],
+            data: log.data,
+            topics: log.topics,
+          });
+          if (decodedV1.eventName === "ProjectCreated") {
+            projectId = decodedV1.args.projectId as bigint;
+            break;
+          }
+        } catch {
+          // Ignore unknown logs.
+        }
+      }
+
+      if (!projectId) return;
+
+      const key = `midpoint-local-desc:${escrowAddress.toLowerCase()}`;
+      const existing = window.localStorage.getItem(key);
+      const map = existing ? (JSON.parse(existing) as Record<string, string>) : {};
+      map[projectId.toString()] = trimmed;
+      window.localStorage.setItem(key, JSON.stringify(map));
+      await refresh();
+    } catch {
+      // Best-effort fallback; no-op if unavailable.
+    }
+  }
+
   async function createProjectNative(freelancer: Address, amount: string, description: string) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
-    return sendContractTx({
+    const hash = await sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,
       functionName: "createProjectNative",
       args: supportsProjectDescription ? [freelancer, sanitizedDescription] : [freelancer],
       value: parseEther(amount),
     });
+    await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
+    return hash;
   }
 
   async function createProjectUSDC(freelancer: Address, amount: string, description: string) {
@@ -482,7 +551,7 @@ export function useMidpoint() {
     if (!usdcAddress) throw new Error("Missing NEXT_PUBLIC_USDC_AMOY_ADDRESS");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
-    return sendContractTx({
+    const hash = await sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,
       functionName: "createProjectERC20",
@@ -490,6 +559,8 @@ export function useMidpoint() {
         ? [usdcAddress, freelancer, parseUnits(amount, 6), sanitizedDescription]
         : [usdcAddress, freelancer, parseUnits(amount, 6)],
     });
+    await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
+    return hash;
   }
 
   async function submitWork(projectId: bigint, ipfsCid: string) {
