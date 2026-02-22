@@ -13,6 +13,28 @@ import { Progress } from "@/components/ui/progress";
 const REVIEW_SECONDS = 14 * 24 * 60 * 60;
 const DISPUTE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 const LIFECYCLE_SECONDS = 14 * 24 * 60 * 60;
+const REVIEW_WINDOW_SECONDS = 14 * 24 * 60 * 60;
+
+function readLocalAnchor(projectId: bigint) {
+  if (typeof window === "undefined") return 0;
+  try {
+    const key = `midpoint-timer-anchor:${projectId.toString()}`;
+    const raw = window.localStorage.getItem(key);
+    return raw ? Number(raw) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeLocalAnchor(projectId: bigint, anchorSec: number) {
+  if (typeof window === "undefined" || !anchorSec) return;
+  try {
+    const key = `midpoint-timer-anchor:${projectId.toString()}`;
+    window.localStorage.setItem(key, String(anchorSec));
+  } catch {
+    // Ignore local storage errors.
+  }
+}
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -57,6 +79,7 @@ export function ProjectCard({
   const [uploading, setUploading] = useState(false);
   const [settlementCut, setSettlementCut] = useState("5000");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [legacyAnchorSec, setLegacyAnchorSec] = useState(() => readLocalAnchor(project.id));
   const effectiveStatus =
     project.status === ProjectStatus.AwaitingSubmission && project.submissionCid
       ? ProjectStatus.UnderReview
@@ -66,6 +89,20 @@ export function ProjectCard({
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (legacyAnchorSec) return;
+    const fallbackAnchor =
+      project.createdAt > 0
+        ? project.createdAt
+        : Number(project.disputeStartTime) > 0
+          ? Number(project.disputeStartTime)
+          : Number(project.reviewDeadline) > REVIEW_WINDOW_SECONDS
+            ? Number(project.reviewDeadline) - REVIEW_WINDOW_SECONDS
+            : Math.floor(Date.now() / 1000);
+    setLegacyAnchorSec(fallbackAnchor);
+    writeLocalAnchor(project.id, fallbackAnchor);
+  }, [legacyAnchorSec, project.createdAt, project.disputeStartTime, project.id, project.reviewDeadline]);
 
   const isClient = Boolean(me && project.client.toLowerCase() === me.toLowerCase());
   const isFreelancer = Boolean(me && project.freelancer.toLowerCase() === me.toLowerCase());
@@ -103,8 +140,11 @@ export function ProjectCard({
   const cycleAnchorSec = useMemo(() => {
     if (project.disputeStartTime > 0n) return Number(project.disputeStartTime);
     if (project.createdAt > 0) return project.createdAt;
-    return 0;
-  }, [project.createdAt, project.disputeStartTime]);
+    if (project.reviewDeadline > BigInt(REVIEW_WINDOW_SECONDS)) {
+      return Number(project.reviewDeadline) - REVIEW_WINDOW_SECONDS;
+    }
+    return legacyAnchorSec;
+  }, [legacyAnchorSec, project.createdAt, project.disputeStartTime, project.reviewDeadline]);
 
   const lifecycleProgress = useMemo(() => {
     if (!cycleAnchorSec || effectiveStatus === ProjectStatus.Resolved) return 0;
