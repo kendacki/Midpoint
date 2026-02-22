@@ -56,6 +56,10 @@ export function ProjectCard({
 }) {
   const [uploading, setUploading] = useState(false);
   const [settlementCut, setSettlementCut] = useState("5000");
+  const effectiveStatus =
+    project.status === ProjectStatus.AwaitingSubmission && project.submissionCid
+      ? ProjectStatus.UnderReview
+      : project.status;
 
   const isClient = Boolean(me && project.client.toLowerCase() === me.toLowerCase());
   const isFreelancer = Boolean(me && project.freelancer.toLowerCase() === me.toLowerCase());
@@ -63,25 +67,25 @@ export function ProjectCard({
   const decimals = isUSDC ? 6 : 18;
 
   const reviewProgress = useMemo(() => {
-    if (project.status !== ProjectStatus.UnderReview || !project.reviewDeadline) return 0;
+    if (effectiveStatus !== ProjectStatus.UnderReview || !project.reviewDeadline) return 0;
     const nowSec = Math.floor(Date.now() / 1000);
     const deadline = Number(project.reviewDeadline);
     const elapsed = REVIEW_SECONDS - Math.max(0, deadline - nowSec);
     return Math.max(0, Math.min(100, (elapsed / REVIEW_SECONDS) * 100));
-  }, [project.reviewDeadline, project.status]);
+  }, [project.reviewDeadline, effectiveStatus]);
 
   const reviewRemaining = useMemo(() => {
-    if (project.status !== ProjectStatus.UnderReview || !project.reviewDeadline) return "N/A";
+    if (effectiveStatus !== ProjectStatus.UnderReview || !project.reviewDeadline) return "N/A";
     const ms = Number(project.reviewDeadline) * 1000 - Date.now();
     if (ms <= 0) return "Expired";
     return formatDistanceStrict(Date.now(), Date.now() + ms);
-  }, [project.reviewDeadline, project.status]);
+  }, [project.reviewDeadline, effectiveStatus]);
 
   const nextBurnAt = useMemo(() => {
-    if (project.status !== ProjectStatus.Disputed) return null;
+    if (effectiveStatus !== ProjectStatus.Disputed) return null;
     const nextInterval = Number(project.burnedIntervals) + 1;
     return Number(project.disputeStartTime) * 1000 + nextInterval * DISPUTE_INTERVAL_MS;
-  }, [project.burnedIntervals, project.disputeStartTime, project.status]);
+  }, [project.burnedIntervals, project.disputeStartTime, effectiveStatus]);
 
   const burnRemaining = useMemo(() => {
     if (!nextBurnAt) return "N/A";
@@ -109,7 +113,7 @@ export function ProjectCard({
     <article className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-zinc-900">{project.description || `Project #${project.id.toString()}`}</h4>
-        <Badge variant={project.status === ProjectStatus.Disputed ? "destructive" : "secondary"}>{statusLabel(project.status)}</Badge>
+        <Badge variant={effectiveStatus === ProjectStatus.Disputed ? "destructive" : "secondary"}>{statusLabel(effectiveStatus)}</Badge>
       </div>
       <p className="text-xs text-zinc-600">
         Client: {shortAddress(project.client)} · Freelancer: {shortAddress(project.freelancer)}
@@ -131,7 +135,7 @@ export function ProjectCard({
         </div>
       </div>
 
-      {project.status !== ProjectStatus.Resolved && project.createdAt ? (
+      {effectiveStatus !== ProjectStatus.Resolved && project.createdAt ? (
         <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-medium text-emerald-900">Live escrow cycle</span>
@@ -141,7 +145,7 @@ export function ProjectCard({
         </div>
       ) : null}
 
-      {project.status === ProjectStatus.UnderReview ? (
+      {effectiveStatus === ProjectStatus.UnderReview ? (
         <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-medium text-blue-900">Review window</span>
@@ -151,7 +155,7 @@ export function ProjectCard({
         </div>
       ) : null}
 
-      {project.status === ProjectStatus.AwaitingSubmission ? (
+      {effectiveStatus === ProjectStatus.AwaitingSubmission ? (
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {mode === "freelancer"
             ? "Upload + Submit is now unlocked for freelancer. Once submitted, the 14-day client review timer starts automatically."
@@ -159,7 +163,7 @@ export function ProjectCard({
         </div>
       ) : null}
 
-      {project.status === ProjectStatus.Disputed ? (
+      {effectiveStatus === ProjectStatus.Disputed ? (
         <div className="burning-pulse mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
           <div className="mb-2 flex items-center gap-2 text-red-700">
             <Flame className="h-4 w-4" />
@@ -179,7 +183,7 @@ export function ProjectCard({
       ) : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {project.status === ProjectStatus.AwaitingSubmission && isFreelancer && mode === "freelancer" ? (
+        {effectiveStatus === ProjectStatus.AwaitingSubmission && isFreelancer && mode === "freelancer" ? (
           <label className="inline-flex">
             <input
               className="hidden"
@@ -203,7 +207,7 @@ export function ProjectCard({
           </label>
         ) : null}
 
-        {project.status === ProjectStatus.UnderReview && isClient && mode === "client" ? (
+        {effectiveStatus === ProjectStatus.UnderReview && isClient && mode === "client" ? (
           <>
             <a
               className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors ${
@@ -230,7 +234,7 @@ export function ProjectCard({
           </>
         ) : null}
 
-        {project.status === ProjectStatus.UnderReview && isFreelancer && mode === "freelancer" ? (
+        {effectiveStatus === ProjectStatus.UnderReview && isFreelancer && mode === "freelancer" ? (
           <Button size="sm" variant="outline" disabled={isWriting} onClick={() => onClaimTimeout(project.id)}>
             Claim Timeout
           </Button>
