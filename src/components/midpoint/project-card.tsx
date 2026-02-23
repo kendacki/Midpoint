@@ -355,7 +355,7 @@ export function ProjectCard({
           <>
             {submissionUrl ? (
               <a
-                className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900 touch-manipulation transition-transform duration-75 hover:bg-zinc-100 active:scale-[0.98]"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-violet-300 bg-violet-50 px-3 text-sm font-medium text-violet-900 touch-manipulation transition-transform duration-75 hover:bg-violet-100 active:scale-[0.98]"
                 href={submissionUrl}
                 target="_blank"
                 rel="noreferrer"
