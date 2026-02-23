@@ -39,7 +39,7 @@ export default function Home() {
       <TopNav />
       <section className="mx-auto grid w-full max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="glass-panel interactive-lift reveal-up rounded-3xl p-6 sm:p-10">
-          <p className="mb-3 font-montserrat text-sm uppercase tracking-[0.25em] text-violet-600">Midpoint Protocol</p>
+          <p className="mb-3 font-montserrat text-sm uppercase tracking-[0.25em] text-violet-600">Midpoint Escrow</p>
           <h1 className="text-3xl font-bold leading-tight text-zinc-900 sm:text-5xl">
             Trustless Deals for <span className="text-violet-600">Clients</span> and <span className="text-sky-500">Freelancers</span>
           </h1>
