@@ -6,7 +6,7 @@ export default function SmartContractPage() {
       <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-zinc-700">
         <li><span className="font-semibold">AwaitingSubmission</span>: escrow funded and waiting for freelancer work CID.</li>
         <li><span className="font-semibold">UnderReview</span>: 14-day review countdown is active.</li>
-        <li><span className="font-semibold">Disputed</span>: burn-pressure mode (5% per 7 days when applied).</li>
+        <li><span className="font-semibold">Disputed</span>: burn-pressure mode (5% per 14 days when applied).</li>
         <li><span className="font-semibold">Resolved</span>: project closed and funds distributed.</li>
       </ul>
       <p className="mt-4 text-sm text-zinc-700">
