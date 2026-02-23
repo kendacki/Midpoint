@@ -97,6 +97,7 @@ export function ProjectCard({
 }) {
   const [uploading, setUploading] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [settlementCut, setSettlementCut] = useState("5000");
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -263,33 +264,39 @@ export function ProjectCard({
             <Button
               size="sm"
               variant="destructive"
-              disabled={isWriting}
+              disabled={isWriting || acting}
               onClick={async () => {
                 setActionError(null);
+                setActing(true);
                 try {
                   await onApplyDecay(project.id);
                 } catch (err) {
                   setActionError(normalizeTxError(err));
+                } finally {
+                  setActing(false);
                 }
               }}
             >
-              Apply Burn
+              {acting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Apply Burn"}
             </Button>
             <Input value={settlementCut} onChange={(event) => setSettlementCut(event.target.value)} placeholder="Freelancer share % (e.g. 5000 = 50%)" title="Base points: 10000 = 100%. 5000 = 50% to freelancer." />
             <Button
               size="sm"
               variant="outline"
-              disabled={isWriting}
+              disabled={isWriting || acting}
               onClick={async () => {
                 setActionError(null);
+                setActing(true);
                 try {
                   await onMutualSettlement(project.id, Number(settlementCut));
                 } catch (err) {
                   setActionError(normalizeTxError(err));
+                } finally {
+                  setActing(false);
                 }
               }}
             >
-              Settle
+              {acting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Settle"}
             </Button>
           </div>
         </div>
@@ -320,7 +327,7 @@ export function ProjectCard({
                 }
               }}
             />
-            <span className="inline-flex h-10 items-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900">
+            <span className="inline-flex h-10 items-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 touch-manipulation transition-transform duration-75 active:scale-[0.98]">
               {uploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -340,7 +347,7 @@ export function ProjectCard({
           <>
             {submissionUrl ? (
               <a
-                className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900 touch-manipulation transition-transform duration-75 hover:bg-zinc-100 active:scale-[0.98]"
                 href={submissionUrl}
                 target="_blank"
                 rel="noreferrer"
@@ -380,7 +387,7 @@ export function ProjectCard({
             </Button>
             <a
               href={`mailto:condoleezzatobi@gmail.com?subject=${encodeURIComponent(`Midpoint Escrow Dispute Ticket - Project #${project.id}`)}`}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-red-600 px-4 text-sm font-medium text-white touch-manipulation transition-transform duration-75 hover:bg-red-500 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
               aria-label="Open dispute ticket email"
             >
               Dispute
@@ -392,17 +399,20 @@ export function ProjectCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={isWriting}
+            disabled={isWriting || acting}
             onClick={async () => {
               setActionError(null);
+              setActing(true);
               try {
                 await onClaimTimeout(project.id);
               } catch (err) {
                 setActionError(normalizeTxError(err));
+              } finally {
+                setActing(false);
               }
             }}
           >
-            Claim Timeout
+            {acting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Claim Timeout"}
           </Button>
         ) : null}
       </div>
