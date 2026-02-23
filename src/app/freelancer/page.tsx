@@ -50,11 +50,11 @@ export default function FreelancerPage() {
                 <p className="text-2xl font-semibold text-zinc-900">{pendingSubmissionCount}</p>
               </div>
               <div className="mini-glass interactive-lift">
-                <p className="text-xs uppercase text-zinc-500">Claimable Funds</p>
+                <p className="text-xs uppercase text-zinc-500">Claimed Funds</p>
                 <p className="text-xl font-semibold text-zinc-900">
-                  {midpoint.formatTokenAmount(midpoint.freelancerReleasedPol)} POL
+                  {midpoint.formatTokenAmount(midpoint.claimedPOL)} POL
                 </p>
-                <p className="text-sm text-zinc-600">{midpoint.formatTokenAmount(midpoint.freelancerReleasedUsdc, 6)} USDC released</p>
+                <p className="text-sm text-zinc-600">{midpoint.formatTokenAmount(midpoint.claimedUSDC, 6)} USDC</p>
               </div>
             </div>
           </div>

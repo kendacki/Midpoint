@@ -170,6 +170,18 @@ export function ProjectCard({
     return formatDistanceStrict(nowMs, nowMs + remainingSec * 1000);
   }, [cycleAnchorSec, effectiveStatus, nowMs]);
 
+  if (mode === "freelancer") {
+    console.log("Freelancer TX Data:", {
+      projectId: project.id.toString(),
+      description: project.description || null,
+      status: project.status,
+      effectiveStatus,
+      token: project.token,
+      totalAmount: project.totalAmount.toString(),
+      submissionCid: project.submissionCid || null,
+    });
+  }
+
   return (
     <article className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between">
@@ -350,21 +362,12 @@ export function ProjectCard({
                 "Release Tokens"
               )}
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={isWriting}
-              onClick={async () => {
-                setActionError(null);
-                try {
-                  await onDispute(project.id);
-                } catch (err) {
-                  setActionError(normalizeTxError(err));
-                }
-              }}
+            <a
+              href={`mailto:condoleezzatobi@gmail.com?subject=${encodeURIComponent(`Midpoint Escrow Dispute Ticket - Project #${project.id}`)}`}
+              className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-500"
             >
               Dispute
-            </Button>
+            </a>
           </>
         ) : null}
 

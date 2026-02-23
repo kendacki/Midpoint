@@ -896,6 +896,8 @@ export function useMidpoint() {
     claimableFunds,
     freelancerReleasedPol,
     freelancerReleasedUsdc,
+    claimedPOL: freelancerReleasedPol,
+    claimedUSDC: freelancerReleasedUsdc,
     history,
     clientHistory,
     freelancerHistory,
