@@ -5,6 +5,7 @@ import { formatDistanceStrict } from "date-fns";
 import { Address, zeroAddress } from "viem";
 import { Flame, Loader2, Upload } from "lucide-react";
 import { MidpointProject, ProjectStatus } from "@/hooks/use-midpoint";
+import { normalizeTxError } from "@/lib/error-messages";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,7 @@ export function ProjectCard({
 }) {
   const [uploading, setUploading] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [settlementCut, setSettlementCut] = useState("5000");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [legacyAnchorSec, setLegacyAnchorSec] = useState(() => readLocalAnchor(project.id));
@@ -230,11 +232,35 @@ export function ProjectCard({
           </div>
           <p className="text-sm text-red-700">Next burn in {burnRemaining}</p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <Button size="sm" variant="destructive" disabled={isWriting} onClick={() => onApplyDecay(project.id)}>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={isWriting}
+              onClick={async () => {
+                setActionError(null);
+                try {
+                  await onApplyDecay(project.id);
+                } catch (err) {
+                  setActionError(normalizeTxError(err));
+                }
+              }}
+            >
               Apply Burn
             </Button>
             <Input value={settlementCut} onChange={(event) => setSettlementCut(event.target.value)} placeholder="Freelancer bps" />
-            <Button size="sm" variant="outline" disabled={isWriting} onClick={() => onMutualSettlement(project.id, Number(settlementCut))}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isWriting}
+              onClick={async () => {
+                setActionError(null);
+                try {
+                  await onMutualSettlement(project.id, Number(settlementCut));
+                } catch (err) {
+                  setActionError(normalizeTxError(err));
+                }
+              }}
+            >
               Settle
             </Button>
           </div>
@@ -243,16 +269,23 @@ export function ProjectCard({
 
       <div className="mt-3 flex flex-wrap gap-2">
         {effectiveStatus === ProjectStatus.AwaitingSubmission && isFreelancer && mode === "freelancer" ? (
-          <label className="inline-flex">
+          <label
+            className={`inline-flex cursor-pointer ${uploading ? "pointer-events-none opacity-70" : ""}`}
+            aria-busy={uploading}
+          >
             <input
               className="hidden"
               type="file"
+              disabled={uploading}
               onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
+                setActionError(null);
                 setUploading(true);
                 try {
                   await onSubmitWork(project.id, file);
+                } catch (err) {
+                  setActionError(normalizeTxError(err));
                 } finally {
                   setUploading(false);
                   event.currentTarget.value = "";
@@ -260,35 +293,49 @@ export function ProjectCard({
               }}
             />
             <span className="inline-flex h-10 items-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900">
-              <Upload className="mr-2 h-4 w-4" />
-              {uploading ? "Uploading..." : "Upload + Submit"}
+              {uploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading & Submitting...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload + Submit
+                </>
+              )}
             </span>
           </label>
         ) : null}
 
-        {effectiveStatus === ProjectStatus.UnderReview && isClient && mode === "client" && Boolean(submissionUrl) ? (
+        {effectiveStatus === ProjectStatus.UnderReview && isClient && mode === "client" ? (
           <>
-            <a
-              className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors ${
-                submissionUrl
-                  ? "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100"
-                  : "border border-zinc-200 bg-zinc-100 text-zinc-400 pointer-events-none"
-              }`}
-              href={submissionUrl ?? "#"}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Download Document
-            </a>
+            {submissionUrl ? (
+              <a
+                className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100"
+                href={submissionUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Download Document
+              </a>
+            ) : (
+              <span className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-200 bg-zinc-100 px-3 text-sm font-medium text-zinc-400">
+                {project.hasSubmissionSignal ? "Loading document…" : "No document yet"}
+              </span>
+            )}
             <Button
               size="sm"
               className={submissionUrl ? "bg-emerald-600 text-white hover:bg-emerald-500" : ""}
               variant={submissionUrl ? "default" : "outline"}
               disabled={isWriting || releasing || !submissionUrl}
               onClick={async () => {
+                setActionError(null);
                 setReleasing(true);
                 try {
                   await onApprove(project.id);
+                } catch (err) {
+                  setActionError(normalizeTxError(err));
                 } finally {
                   setReleasing(false);
                 }
@@ -303,16 +350,46 @@ export function ProjectCard({
                 "Release Tokens"
               )}
             </Button>
-            <Button size="sm" variant="destructive" disabled={isWriting} onClick={() => onDispute(project.id)}>Dispute</Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={isWriting}
+              onClick={async () => {
+                setActionError(null);
+                try {
+                  await onDispute(project.id);
+                } catch (err) {
+                  setActionError(normalizeTxError(err));
+                }
+              }}
+            >
+              Dispute
+            </Button>
           </>
         ) : null}
 
         {effectiveStatus === ProjectStatus.UnderReview && isFreelancer && mode === "freelancer" ? (
-          <Button size="sm" variant="outline" disabled={isWriting} onClick={() => onClaimTimeout(project.id)}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isWriting}
+            onClick={async () => {
+              setActionError(null);
+              try {
+                await onClaimTimeout(project.id);
+              } catch (err) {
+                setActionError(normalizeTxError(err));
+              }
+            }}
+          >
             Claim Timeout
           </Button>
         ) : null}
       </div>
+
+      {actionError ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>
+      ) : null}
 
       {submissionUrl ? (
         <a

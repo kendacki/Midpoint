@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-ethers";
+import "@nomiclabs/hardhat-etherscan";
 import { config as loadEnv } from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 
@@ -24,6 +25,21 @@ const config: HardhatUserConfig = {
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 80002,
     },
+  },
+  etherscan: {
+    apiKey: {
+      amoy: process.env.POLYGONSCAN_API_KEY ?? "",
+    },
+    customChains: [
+      {
+        network: "amoy",
+        chainId: 80002,
+        urls: {
+          apiURL: "https://api-amoy.polygonscan.com/api",
+          browserURL: "https://amoy.polygonscan.com",
+        },
+      },
+    ],
   },
 };
 

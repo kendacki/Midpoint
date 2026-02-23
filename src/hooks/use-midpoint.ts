@@ -175,8 +175,8 @@ export function useMidpoint() {
 
       return Array.from(ids).sort((a, b) => Number(b - a));
     },
-    staleTime: 20_000,
-    refetchInterval: 30_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });
 
@@ -358,45 +358,37 @@ export function useMidpoint() {
       }
       return compact;
     },
-    refetchInterval: 45_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });
 
   const { data: eventDescriptionById = {}, isLoading: isLoadingEventDescriptions } = useQuery({
-    queryKey: ["midpoint-event-descriptions", escrowAddress, address, ids.map((id) => id.toString()).join(",")],
-    enabled: Boolean(escrowAddress && publicClient && address),
+    queryKey: ["midpoint-event-descriptions", escrowAddress, ids.map((id) => id.toString()).join(",")],
+    enabled: Boolean(escrowAddress && publicClient && ids.length),
     queryFn: async () => {
-      if (!escrowAddress || !publicClient || !address) return {} as Record<string, string>;
+      if (!escrowAddress || !publicClient || !ids.length) return {} as Record<string, string>;
 
-      const logs = await Promise.all([
-        publicClient.getLogs({
+      const targetIds = new Set(ids.map((id) => id.toString()));
+      const logs = await publicClient
+        .getLogs({
           address: escrowAddress,
           event: projectCreatedEventV2,
-          args: { client: address },
           fromBlock: 0n,
           toBlock: "latest",
-        }).catch(() => []),
-        publicClient.getLogs({
-          address: escrowAddress,
-          event: projectCreatedEventV2,
-          args: { freelancer: address },
-          fromBlock: 0n,
-          toBlock: "latest",
-        }).catch(() => []),
-      ]);
+        })
+        .catch(() => []);
 
       const result: Record<string, string> = {};
-      for (const group of logs) {
-        for (const log of group) {
-          const projectId = log.args.projectId;
-          const description = log.args.description;
-          if (!projectId || !description) continue;
-          result[projectId.toString()] = description;
-        }
+      for (const log of logs) {
+        const projectId = log.args.projectId;
+        const description = log.args.description;
+        if (!projectId || !description || !targetIds.has(projectId.toString())) continue;
+        result[projectId.toString()] = description;
       }
       return result;
     },
-    staleTime: 300_000,
+    staleTime: 60_000,
+    refetchInterval: 20_000,
     refetchOnWindowFocus: false,
   });
 
@@ -456,7 +448,7 @@ export function useMidpoint() {
     allowFailure: true,
     query: {
       enabled: Boolean(escrowAddress) && ids.length > 0,
-      refetchInterval: 20_000,
+      refetchInterval: 15_000,
       refetchOnWindowFocus: false,
     },
   });
@@ -545,7 +537,7 @@ export function useMidpoint() {
           a.blockNumber === b.blockNumber ? 0 : a.blockNumber > b.blockNumber ? -1 : 1
         );
     },
-    refetchInterval: 45_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });
 
@@ -609,11 +601,7 @@ export function useMidpoint() {
     if (!publicClient || !escrowAddress || !isConnected) return;
 
     const refreshMidpointViews = () => {
-      void queryClient.invalidateQueries({ queryKey: ["midpoint-scoped-project-ids"] });
-      void queryClient.invalidateQueries({ queryKey: ["midpoint-status-meta"] });
-      void queryClient.invalidateQueries({ queryKey: ["midpoint-history"] });
-      void queryClient.invalidateQueries({ queryKey: ["midpoint-event-descriptions"] });
-      void queryClient.invalidateQueries({ queryKey: ["midpoint-created-at"] });
+      void queryClient.invalidateQueries();
     };
 
     const eventsAbi = [workSubmittedEvent, projectResolvedEvent, reviewApprovedEvent] as const;

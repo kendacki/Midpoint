@@ -9,6 +9,7 @@ import { TransactionHistory } from "@/components/midpoint/transaction-history";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useMidpoint, ProjectStatus } from "@/hooks/use-midpoint";
+import { normalizeTxError } from "@/lib/error-messages";
 
 export default function ClientPage() {
   const midpoint = useMidpoint();
@@ -31,8 +32,8 @@ export default function ClientPage() {
   const clientActiveEscrows = midpoint.clientProjects.filter(
     (project) => effectiveStatus(project) !== ProjectStatus.Resolved
   );
-  const activeCount = midpoint.clientProjects.filter(
-    (project) => effectiveStatus(project) === ProjectStatus.AwaitingSubmission
+  const pendingCount = midpoint.clientProjects.filter(
+    (project) => effectiveStatus(project) !== ProjectStatus.Resolved
   ).length;
   const completedCount = midpoint.clientProjects.filter(
     (project) => effectiveStatus(project) === ProjectStatus.Resolved
@@ -50,7 +51,7 @@ export default function ClientPage() {
       setCreatedType("pol");
     } catch (err) {
       setTriggeredType(null);
-      setError(err instanceof Error ? err.message : "Failed to create POL escrow");
+      setError(normalizeTxError(err));
     } finally {
       setIsCreating(false);
     }
@@ -68,7 +69,7 @@ export default function ClientPage() {
       setCreatedType("usdc");
     } catch (err) {
       setTriggeredType(null);
-      setError(err instanceof Error ? err.message : "Failed to create USDC escrow");
+      setError(normalizeTxError(err));
     } finally {
       setIsCreating(false);
     }
@@ -85,8 +86,8 @@ export default function ClientPage() {
             <p className="mt-1 text-sm text-zinc-600">Create escrow deals and manage submissions, disputes, and payouts.</p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="mini-glass">
-                <p className="text-xs uppercase text-zinc-500">Active</p>
-                <p className="text-2xl font-semibold text-zinc-900">{activeCount}</p>
+                <p className="text-xs uppercase text-zinc-500">Pending</p>
+                <p className="text-2xl font-semibold text-zinc-900">{pendingCount}</p>
               </div>
               <div className="mini-glass">
                 <p className="text-xs uppercase text-zinc-500">Completed</p>

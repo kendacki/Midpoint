@@ -15,8 +15,8 @@ export default function FreelancerPage() {
     }
     return project.status;
   };
-  const activeCount = midpoint.freelancerProjects.filter(
-    (project) => effectiveStatus(project) === ProjectStatus.AwaitingSubmission
+  const pendingCount = midpoint.freelancerProjects.filter(
+    (project) => effectiveStatus(project) !== ProjectStatus.Resolved
   ).length;
   const completedCount = midpoint.freelancerProjects.filter(
     (project) => effectiveStatus(project) === ProjectStatus.Resolved
@@ -36,8 +36,8 @@ export default function FreelancerPage() {
             <p className="mt-1 text-sm text-zinc-600">Submit work, monitor review timers, and claim funds when eligible.</p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="mini-glass interactive-lift">
-                <p className="text-xs uppercase text-zinc-500">Active</p>
-                <p className="text-2xl font-semibold text-zinc-900">{activeCount}</p>
+                <p className="text-xs uppercase text-zinc-500">Pending</p>
+                <p className="text-2xl font-semibold text-zinc-900">{pendingCount}</p>
               </div>
               <div className="mini-glass interactive-lift">
                 <p className="text-xs uppercase text-zinc-500">Completed</p>
