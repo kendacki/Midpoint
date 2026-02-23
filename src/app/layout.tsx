@@ -15,7 +15,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Midpoint - On-Chain Letter of Credit",
+  title: "Midpoint Escrow",
   description: "Decentralized escrow dApp for freelancer payments on Polygon.",
 };
 

@@ -5,7 +5,7 @@ export default function DocumentationPage() {
     <article className="glass-panel interactive-lift reveal-up rounded-2xl p-5">
       <h2 className="font-montserrat text-2xl font-bold text-zinc-900">Overview</h2>
       <p className="mt-3 text-sm leading-6 text-zinc-700">
-        Midpoint is an on-chain letter of credit for freelance work. Funds are escrowed in contract, work is submitted by IPFS CID,
+        Midpoint is a decentralized escrow for freelance work. Funds are escrowed in contract, work is submitted by IPFS CID,
         and release/dispute logic runs directly from blockchain state.
       </p>
       <p className="mt-3 text-sm leading-6 text-zinc-700">

@@ -10,11 +10,8 @@ export function TopNav() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link href="/" className="block bg-transparent">
-            <Image src="/midpoint-logo.png" alt="Midpoint logo" width={120} height={52} className="h-auto w-[84px] sm:w-[112px] bg-transparent" />
+            <Image src="/midpoint-logo.png" alt="Midpoint logo" width={156} height={68} className="h-auto w-[100px] sm:w-[136px] bg-transparent" />
           </Link>
-          <div className="hidden truncate text-sm font-semibold tracking-wide text-zinc-800 sm:block">
-            On-chain escrow for builders
-          </div>
         </div>
         <div className="glass-connect">
           <ConnectButton chainStatus="icon" showBalance={false} />
