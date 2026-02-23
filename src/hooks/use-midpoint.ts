@@ -766,7 +766,7 @@ export function useMidpoint() {
   const GAS_LIMIT_DEFAULT = 400_000n;
 
   async function sendContractTx(args: {
-    abi: typeof midpointEscrowAbi;
+    abi: readonly unknown[];
     address: Address;
     functionName: string;
     args: readonly unknown[];
@@ -874,18 +874,40 @@ export function useMidpoint() {
     return hash;
   }
 
+  const erc20Abi = [
+    { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
+  ] as const;
+
+  async function ensureUSDCApproval(amount: bigint) {
+    if (!address || !usdcAddress || !escrowAddress || !publicClient) return;
+    const allowance = (await publicClient.readContract({
+      abi: erc20Abi,
+      address: usdcAddress,
+      functionName: "allowance",
+      args: [address, escrowAddress],
+    })) as bigint;
+    if (allowance >= amount) return;
+    await sendContractTx({
+      abi: erc20Abi,
+      address: usdcAddress,
+      functionName: "approve",
+      args: [escrowAddress, amount],
+    });
+  }
+
   async function createProjectUSDC(freelancer: Address, amount: string, description: string) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
     if (!usdcAddress) throw new Error("Missing NEXT_PUBLIC_USDC_AMOY_ADDRESS");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
+    const amountWei = parseUnits(amount, 6);
+    await ensureUSDCApproval(amountWei);
     const hash = await sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,
       functionName: "createProjectERC20",
-      args: supportsProjectDescription
-        ? [usdcAddress, freelancer, parseUnits(amount, 6), sanitizedDescription]
-        : [usdcAddress, freelancer, parseUnits(amount, 6)],
+      args: [usdcAddress, freelancer, amountWei, supportsProjectDescription ? sanitizedDescription : ""],
     });
     await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
     return hash;

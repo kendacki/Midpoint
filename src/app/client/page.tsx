@@ -62,6 +62,7 @@ export default function ClientPage() {
       setTimeout(() => setSuccessMessage(null), 6000);
     } catch (err) {
       setTriggeredType(null);
+      setCreatedType(null);
       const msg = normalizeTxError(err);
       setError(msg);
       toast(msg, "error");
@@ -90,6 +91,7 @@ export default function ClientPage() {
       setTimeout(() => setSuccessMessage(null), 6000);
     } catch (err) {
       setTriggeredType(null);
+      setCreatedType(null);
       const msg = normalizeTxError(err);
       setError(msg);
       toast(msg, "error");

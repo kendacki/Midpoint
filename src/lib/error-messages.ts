@@ -31,6 +31,8 @@ export function normalizeTxError(error: unknown): string {
     if (/Invalid state|Invalid status/i.test(msg)) return "Invalid action for current project status.";
     if (/Review still active/i.test(msg)) return "Review period is still active. Wait for it to expire.";
     if (/CID required|description required/i.test(msg)) return "Required field is missing.";
+    if (/insufficient allowance|ERC20: insufficient allowance|allowance/i.test(msg)) return "USDC approval failed. Please try again.";
+    if (/insufficient balance|ERC20: transfer amount exceeds balance/i.test(msg)) return "Insufficient USDC balance. Add USDC to your wallet.";
     return "Transaction failed. Please check the project status and try again.";
   }
 
