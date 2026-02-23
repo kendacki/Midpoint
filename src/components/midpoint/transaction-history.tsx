@@ -5,17 +5,37 @@ function shortHash(txHash: string) {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
 }
 
+function HistorySkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-white/40 bg-white/50 p-3">
+          <div className="h-4 w-24 animate-pulse rounded bg-zinc-200/80" />
+          <div className="mt-2 h-3 w-16 animate-pulse rounded bg-zinc-200/60" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function TransactionHistory({
   title,
   entries,
+  isLoading,
 }: {
   title: string;
   entries: MidpointHistoryEntry[];
+  isLoading?: boolean;
 }) {
   return (
     <section className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
       <h3 className="mb-3 font-semibold text-zinc-900">{title}</h3>
-      {!entries.length ? <p className="text-sm text-zinc-600">No transaction history yet.</p> : null}
+      {isLoading && !entries.length ? (
+        <HistorySkeleton />
+      ) : !entries.length ? (
+        <p className="text-sm text-zinc-600">No transaction history yet.</p>
+      ) : null}
+      {entries.length ? (
       <div className="space-y-2">
         {entries.slice(0, 20).map((entry) => (
           <div key={`${entry.txHash}-${entry.event}`} className="rounded-xl border border-white/40 bg-white/50 p-3 text-sm backdrop-blur transition hover:bg-white/65">
@@ -41,6 +61,7 @@ export function TransactionHistory({
           </div>
         ))}
       </div>
+      ) : null}
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useAccount,
@@ -175,7 +175,9 @@ export function useMidpoint() {
 
       return Array.from(ids).sort((a, b) => Number(b - a));
     },
-    staleTime: 10_000,
+    staleTime: 15_000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
     refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });
@@ -258,6 +260,8 @@ export function useMidpoint() {
       return result;
     },
     staleTime: 300_000,
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
   });
 
@@ -358,6 +362,8 @@ export function useMidpoint() {
       }
       return compact;
     },
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
     refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });
@@ -369,7 +375,10 @@ export function useMidpoint() {
       if (!escrowAddress || !publicClient || !ids.length) return {} as Record<string, string>;
 
       const targetIds = new Set(ids.map((id) => id.toString()));
-      const logs = await publicClient
+      const result: Record<string, string> = {};
+
+      // Bulk fetch first (may be truncated on large chains)
+      const bulkLogs = await publicClient
         .getLogs({
           address: escrowAddress,
           event: projectCreatedEventV2,
@@ -378,16 +387,43 @@ export function useMidpoint() {
         })
         .catch(() => []);
 
-      const result: Record<string, string> = {};
-      for (const log of logs) {
+      for (const log of bulkLogs) {
         const projectId = log.args.projectId;
         const description = log.args.description;
         if (!projectId || !description || !targetIds.has(projectId.toString())) continue;
         result[projectId.toString()] = description;
       }
+
+      // Per-project fallback: fetch any missing descriptions via indexed projectId (reliable for freelancer view)
+      const missingIds = ids.filter((id) => !result[id.toString()]);
+      if (missingIds.length > 0) {
+        const perProjectLogs = await Promise.all(
+          missingIds.map((id) =>
+            publicClient
+              .getLogs({
+                address: escrowAddress,
+                event: projectCreatedEventV2,
+                args: { projectId: id },
+                fromBlock: 0n,
+                toBlock: "latest",
+              })
+              .catch(() => [])
+          )
+        );
+        for (let i = 0; i < missingIds.length; i++) {
+          const log = perProjectLogs[i]?.[0];
+          const description = log?.args?.description;
+          if (description && typeof description === "string") {
+            result[missingIds[i].toString()] = description;
+          }
+        }
+      }
+
       return result;
     },
     staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
     refetchInterval: 20_000,
     refetchOnWindowFocus: false,
   });
@@ -537,6 +573,9 @@ export function useMidpoint() {
           a.blockNumber === b.blockNumber ? 0 : a.blockNumber > b.blockNumber ? -1 : 1
         );
     },
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
     refetchInterval: 15_000,
     refetchOnWindowFocus: false,
   });

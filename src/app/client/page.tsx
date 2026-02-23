@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Address, isAddress } from "viem";
 import { MotionDecor } from "@/components/midpoint/motion-decor";
 import { TopNav } from "@/components/midpoint/top-nav";
-import { ProjectCard } from "@/components/midpoint/project-card";
+import { ProjectCard, ProjectCardSkeleton } from "@/components/midpoint/project-card";
 import { TransactionHistory } from "@/components/midpoint/transaction-history";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -168,7 +168,13 @@ export default function ClientPage() {
           </div>
 
           <div className="space-y-3 reveal-up" style={{ animationDelay: "120ms" }}>
-            {clientActiveEscrows.length ? (
+            {midpoint.isLoading && !clientActiveEscrows.length ? (
+              <>
+                <ProjectCardSkeleton />
+                <ProjectCardSkeleton />
+                <ProjectCardSkeleton />
+              </>
+            ) : clientActiveEscrows.length ? (
               clientActiveEscrows.map((project) => (
                 <ProjectCard
                   key={project.id.toString()}
@@ -199,7 +205,7 @@ export default function ClientPage() {
         </div>
 
         <div className="reveal-up" style={{ animationDelay: "180ms" }}>
-          <TransactionHistory title="Client Transaction History" entries={midpoint.clientHistory} />
+          <TransactionHistory title="Client Transaction History" entries={midpoint.clientHistory} isLoading={midpoint.isLoading} />
         </div>
       </section>
     </main>

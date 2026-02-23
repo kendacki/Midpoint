@@ -24,4 +24,10 @@ export const wagmiConfig = getDefaultConfig({
   ssr: true,
 });
 
-export const queryClient = new QueryClient();
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 5 * 60 * 1000,
+    },
+  },
+});

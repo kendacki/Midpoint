@@ -2,7 +2,7 @@
 
 import { TopNav } from "@/components/midpoint/top-nav";
 import { MotionDecor } from "@/components/midpoint/motion-decor";
-import { ProjectCard } from "@/components/midpoint/project-card";
+import { ProjectCard, ProjectCardSkeleton } from "@/components/midpoint/project-card";
 import { TransactionHistory } from "@/components/midpoint/transaction-history";
 import { ProjectStatus, useMidpoint } from "@/hooks/use-midpoint";
 
@@ -65,7 +65,13 @@ export default function FreelancerPage() {
           </div>
 
           <div className="space-y-3 reveal-up" style={{ animationDelay: "120ms" }}>
-            {midpoint.freelancerProjects.length ? (
+            {midpoint.isLoading && !midpoint.freelancerProjects.length ? (
+              <>
+                <ProjectCardSkeleton />
+                <ProjectCardSkeleton />
+                <ProjectCardSkeleton />
+              </>
+            ) : midpoint.freelancerProjects.length ? (
               midpoint.freelancerProjects.map((project) => (
                 <ProjectCard
                   key={project.id.toString()}
@@ -96,7 +102,7 @@ export default function FreelancerPage() {
         </div>
 
         <div className="reveal-up" style={{ animationDelay: "180ms" }}>
-          <TransactionHistory title="Freelancer Transaction History" entries={midpoint.freelancerHistory} />
+          <TransactionHistory title="Freelancer Transaction History" entries={midpoint.freelancerHistory} isLoading={midpoint.isLoading} />
         </div>
       </section>
     </main>

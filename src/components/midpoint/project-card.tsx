@@ -42,6 +42,23 @@ function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+export function ProjectCardSkeleton() {
+  return (
+    <div className="glass-panel interactive-lift rounded-2xl p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="h-5 w-32 animate-pulse rounded bg-zinc-200/80" />
+        <div className="h-6 w-16 animate-pulse rounded-full bg-zinc-200/60" />
+      </div>
+      <div className="mt-3 h-4 w-48 animate-pulse rounded bg-zinc-200/60" />
+      <div className="mt-2 h-4 w-36 animate-pulse rounded bg-zinc-200/50" />
+      <div className="mt-4 flex gap-2">
+        <div className="h-9 w-24 animate-pulse rounded-lg bg-zinc-200/60" />
+        <div className="h-9 w-28 animate-pulse rounded-lg bg-zinc-200/50" />
+      </div>
+    </div>
+  );
+}
+
 function statusLabel(status: ProjectStatus) {
   if (status === ProjectStatus.AwaitingSubmission) return "Awaiting Submission";
   if (status === ProjectStatus.UnderReview) return "Submitted";
