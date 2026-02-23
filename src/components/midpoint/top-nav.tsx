@@ -9,7 +9,9 @@ export function TopNav() {
     <header className="glass-panel reveal-up sticky top-3 z-30 mx-auto mb-6 w-full max-w-6xl rounded-2xl px-3 py-3 sm:px-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Image src="/midpoint-logo.png" alt="Midpoint logo" width={120} height={52} className="h-auto w-[84px] sm:w-[112px]" />
+          <Link href="/" className="block">
+            <Image src="/midpoint-logo.png" alt="Midpoint logo" width={120} height={52} className="h-auto w-[84px] sm:w-[112px]" />
+          </Link>
           <div className="hidden truncate text-sm font-semibold tracking-wide text-zinc-800 sm:block">
             On-chain escrow for builders
           </div>
