@@ -46,12 +46,13 @@ export default function ClientPage() {
     setError(null);
     setSuccessMessage(null);
     setCreatedType(null);
-    setTriggeredType("pol");
     if (!isAddress(freelancer.trim())) {
       setError("Invalid freelancer wallet address.");
       return;
     }
+    setTriggeredType("pol");
     setIsCreating(true);
+    let txFailed = false;
     try {
       await midpoint.createProjectNative(freelancer.trim() as Address, nativeAmount, description);
       setFreelancer("");
@@ -60,14 +61,18 @@ export default function ClientPage() {
       setSuccessMessage("POL escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("POL escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
+      void midpoint.refresh();
     } catch (err) {
-      setTriggeredType(null);
-      setCreatedType(null);
+      txFailed = true;
       const msg = normalizeTxError(err);
       setError(msg);
       toast(msg, "error");
     } finally {
       setIsCreating(false);
+      if (txFailed) {
+        setTriggeredType(null);
+        setCreatedType(null);
+      }
     }
   }
 
@@ -75,12 +80,13 @@ export default function ClientPage() {
     setError(null);
     setSuccessMessage(null);
     setCreatedType(null);
-    setTriggeredType("usdc");
     if (!isAddress(freelancer.trim())) {
       setError("Invalid freelancer wallet address.");
       return;
     }
+    setTriggeredType("usdc");
     setIsCreating(true);
+    let txFailed = false;
     try {
       await midpoint.createProjectUSDC(freelancer.trim() as Address, usdcAmount, description);
       setFreelancer("");
@@ -89,14 +95,18 @@ export default function ClientPage() {
       setSuccessMessage("USDC escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("USDC escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
+      void midpoint.refresh();
     } catch (err) {
-      setTriggeredType(null);
-      setCreatedType(null);
+      txFailed = true;
       const msg = normalizeTxError(err);
       setError(msg);
       toast(msg, "error");
     } finally {
       setIsCreating(false);
+      if (txFailed) {
+        setTriggeredType(null);
+        setCreatedType(null);
+      }
     }
   }
 
