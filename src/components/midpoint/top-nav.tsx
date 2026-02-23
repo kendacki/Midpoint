@@ -17,17 +17,17 @@ export function TopNav() {
           <ConnectButton chainStatus="icon" showBalance={false} />
         </div>
       </div>
-      <nav className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-sm font-medium text-zinc-700 md:hidden">
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:text-zinc-950" href="/">Home</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:text-zinc-950" href="/client">Client</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:text-zinc-950" href="/freelancer">Freelancer</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:text-zinc-950" href="/documentation">Documentation</Link>
+      <nav className="mt-3 flex flex-wrap items-center justify-center gap-2 overflow-x-auto pb-1 text-sm font-medium text-zinc-700 md:hidden">
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/">Home</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/client">Client</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/freelancer">Freelancer</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/documentation">Documentation</Link>
       </nav>
-      <nav className="mt-2 hidden items-center gap-5 text-sm font-medium text-zinc-700 md:flex">
-        <Link className="transition hover:-translate-y-0.5 hover:text-zinc-950" href="/">Home</Link>
-        <Link className="transition hover:-translate-y-0.5 hover:text-zinc-950" href="/client">Client</Link>
-        <Link className="transition hover:-translate-y-0.5 hover:text-zinc-950" href="/freelancer">Freelancer</Link>
-        <Link className="transition hover:-translate-y-0.5 hover:text-zinc-950" href="/documentation">Documentation</Link>
+      <nav className="mt-2 hidden flex-wrap items-center justify-center gap-2 text-sm font-medium text-zinc-700 md:flex lg:gap-3">
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/">Home</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/client">Client</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/freelancer">Freelancer</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/documentation">Documentation</Link>
       </nav>
     </header>
   );
