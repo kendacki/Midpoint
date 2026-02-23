@@ -81,7 +81,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-6 rounded-2xl border border-violet-200/70 bg-gradient-to-r from-violet-100/70 to-sky-100/60 p-4 text-sm text-zinc-700">
-            14-day review timer, dispute burn pressure, and wallet-scoped transaction history are all built in.
+            14-day review timer, dispute resolution mechanisms, and wallet-scoped transaction history are all built in.
           </div>
         </div>
       </section>
