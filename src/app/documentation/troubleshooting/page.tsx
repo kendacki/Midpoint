@@ -7,6 +7,7 @@ export default function TroubleshootingPage() {
         <li>If wallet connect fails, verify WalletConnect project id environment variable.</li>
         <li>If upload fails, confirm Pinata secrets + wallet signature headers are valid.</li>
         <li>If deploy script fails, confirm RPC URL and deployer wallet has gas balance.</li>
+        <li>If &quot;tx fee exceeds the configured cap&quot; appears: In MetaMask, go to Settings → Advanced and increase the &quot;Maximum fee&quot; or disable the fee cap.</li>
       </ul>
       <p className="mt-4 text-sm text-zinc-700">
         For persistent issues, check browser console, network tab, and server logs to identify failing stage quickly.

@@ -22,6 +22,9 @@ export function normalizeTxError(error: unknown): string {
   if (/nonce too low|replacement fee too low/i.test(msg)) {
     return "Transaction already submitted. Refresh and try again if needed.";
   }
+  if (/exceeds the configured cap|tx fee.*exceeds/i.test(msg)) {
+    return "Transaction fee exceeds your wallet cap. In MetaMask: Settings → Advanced → increase 'Maximum fee' or disable the fee cap, then try again.";
+  }
   if (/execution reverted|revert/i.test(msg)) {
     if (/Only freelancer/i.test(msg)) return "Only the designated freelancer can perform this action.";
     if (/Only client/i.test(msg)) return "Only the project client can perform this action.";

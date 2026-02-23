@@ -762,6 +762,9 @@ export function useMidpoint() {
     await connectAsync({ connector: injected() });
   }
 
+  const GAS_LIMIT_ERC20 = 500_000n;
+  const GAS_LIMIT_DEFAULT = 400_000n;
+
   async function sendContractTx(args: {
     abi: typeof midpointEscrowAbi;
     address: Address;
@@ -772,6 +775,9 @@ export function useMidpoint() {
     if (!publicClient) throw new Error("Public client unavailable");
     const feeEstimate = await publicClient.estimateFeesPerGas();
     const txRequest: Record<string, unknown> = { ...args };
+
+    const gasLimit = args.functionName === "createProjectERC20" ? GAS_LIMIT_ERC20 : GAS_LIMIT_DEFAULT;
+    txRequest.gas = gasLimit;
 
     if (feeEstimate.maxFeePerGas || feeEstimate.maxPriorityFeePerGas) {
       const estimatedPriority = feeEstimate.maxPriorityFeePerGas ?? MIN_AMOY_PRIORITY_FEE;
