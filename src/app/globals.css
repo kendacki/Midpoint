@@ -338,6 +338,16 @@ body {
   50% { transform: translate3d(calc((var(--mx) - 50) * -0.16px), calc((var(--my) - 50) * 0.2px), 0); }
 }
 
+/* Mobile: minimum 44px touch targets for primary actions */
+@media (max-width: 640px) {
+  button:not(.no-min-touch),
+  a.glass-button,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .floating-card,
   .burning-pulse,

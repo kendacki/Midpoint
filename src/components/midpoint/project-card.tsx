@@ -82,6 +82,7 @@ export function ProjectCard({
   onMutualSettlement,
   formatTokenAmount,
   isWriting,
+  onError,
 }: {
   project: MidpointProject;
   me?: Address;
@@ -94,6 +95,7 @@ export function ProjectCard({
   onMutualSettlement: (projectId: bigint, cutBps: number) => Promise<unknown>;
   formatTokenAmount: (amount: bigint, decimals?: number) => string;
   isWriting: boolean;
+  onError?: (message: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [releasing, setReleasing] = useState(false);
@@ -271,7 +273,9 @@ export function ProjectCard({
                 try {
                   await onApplyDecay(project.id);
                 } catch (err) {
-                  setActionError(normalizeTxError(err));
+                  const msg = normalizeTxError(err);
+                  setActionError(msg);
+                  onError?.(msg);
                 } finally {
                   setActing(false);
                 }
@@ -290,7 +294,9 @@ export function ProjectCard({
                 try {
                   await onMutualSettlement(project.id, Number(settlementCut));
                 } catch (err) {
-                  setActionError(normalizeTxError(err));
+                  const msg = normalizeTxError(err);
+                  setActionError(msg);
+                  onError?.(msg);
                 } finally {
                   setActing(false);
                 }
@@ -320,7 +326,9 @@ export function ProjectCard({
                 try {
                   await onSubmitWork(project.id, file);
                 } catch (err) {
-                  setActionError(normalizeTxError(err));
+                  const msg = normalizeTxError(err);
+                  setActionError(msg);
+                  onError?.(msg);
                 } finally {
                   setUploading(false);
                   event.currentTarget.value = "";
@@ -370,7 +378,9 @@ export function ProjectCard({
                 try {
                   await onApprove(project.id);
                 } catch (err) {
-                  setActionError(normalizeTxError(err));
+                  const msg = normalizeTxError(err);
+                  setActionError(msg);
+                  onError?.(msg);
                 } finally {
                   setReleasing(false);
                 }
@@ -406,7 +416,9 @@ export function ProjectCard({
               try {
                 await onClaimTimeout(project.id);
               } catch (err) {
-                setActionError(normalizeTxError(err));
+                const msg = normalizeTxError(err);
+                setActionError(msg);
+                onError?.(msg);
               } finally {
                 setActing(false);
               }

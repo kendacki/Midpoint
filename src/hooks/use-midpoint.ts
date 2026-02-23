@@ -52,6 +52,16 @@ export type MidpointHistoryEntry = {
   blockNumber: bigint;
 };
 
+export type CompletedOrderEntry = {
+  projectId: bigint;
+  event: string;
+  txHash: `0x${string}`;
+  blockNumber: bigint;
+  completedAt: number;
+  amount: bigint;
+  token: Address;
+};
+
 const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as Address | undefined;
 const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as Address | undefined;
 const projectCreatedEventV1 = parseAbiItem(
@@ -580,6 +590,70 @@ export function useMidpoint() {
     refetchOnWindowFocus: false,
   });
 
+  const completionEventDefs = [
+    { label: "Completed (Settlement)", event: projectResolvedEvent, getAmount: (args: { freelancerAmount?: bigint }) => args.freelancerAmount ?? 0n },
+    { label: "Completed (Timeout Claim)", event: timeoutClaimedEvent, getAmount: (args: { amount?: bigint }) => args.amount ?? 0n },
+    { label: "Completed (Released)", event: reviewApprovedEvent, getAmount: (args: { amount?: bigint }) => args.amount ?? 0n },
+  ] as const;
+
+  const {
+    data: rawCompletedOrders = [],
+    isLoading: isLoadingCompletedOrders,
+    isError: isCompletedOrdersError,
+    refetch: refetchCompletedOrders,
+  } = useQuery({
+    queryKey: ["midpoint-completed-orders", escrowAddress, ids.map((id) => id.toString()).join(",")],
+    enabled: Boolean(escrowAddress && publicClient && ids.length),
+    queryFn: async () => {
+      if (!escrowAddress || !publicClient || !ids.length) return [];
+      const targetIds = new Set(ids.map((id) => id.toString()));
+      const entries: { projectId: bigint; event: string; txHash: `0x${string}`; blockNumber: bigint; amount: bigint }[] = [];
+      for (const def of completionEventDefs) {
+        const logs = await publicClient
+          .getLogs({ address: escrowAddress, event: def.event, fromBlock: 0n, toBlock: "latest" })
+          .catch(() => []);
+        for (const log of logs) {
+          const projectId = log.args.projectId;
+          if (!projectId || !targetIds.has(projectId.toString())) continue;
+          const amount = def.getAmount(log.args as { freelancerAmount?: bigint; amount?: bigint });
+          entries.push({ projectId, event: def.label, txHash: log.transactionHash, blockNumber: log.blockNumber ?? 0n, amount });
+        }
+      }
+      entries.sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : a.blockNumber < b.blockNumber ? 1 : 0));
+      const uniqueBlocks = [...new Set(entries.map((e) => e.blockNumber.toString()))].map((s) => BigInt(s));
+      const blockTimestampByNumber = new Map<bigint, number>();
+      await Promise.all(
+        uniqueBlocks.map(async (bn) => {
+          const block = await publicClient.getBlock({ blockNumber: bn });
+          blockTimestampByNumber.set(bn, Number(block.timestamp));
+        })
+      );
+      return entries.map((e) => ({ ...e, completedAt: blockTimestampByNumber.get(e.blockNumber) ?? 0 }));
+    },
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const projectById = useMemo(() => {
+    const map = new Map<string, MidpointProject>();
+    for (const p of projects) map.set(p.id.toString(), p);
+    return map;
+  }, [projects]);
+
+  const allCompletedOrders = useMemo((): CompletedOrderEntry[] => {
+    return rawCompletedOrders
+      .map((e) => {
+        const project = projectById.get(e.projectId.toString());
+        if (!project) return null;
+        return { ...e, token: project.token } satisfies CompletedOrderEntry;
+      })
+      .filter((x): x is CompletedOrderEntry => x !== null)
+      .sort((a, b) => b.completedAt - a.completedAt);
+  }, [rawCompletedOrders, projectById]);
+
   const activeProjects = projects.filter((project) => project.status !== ProjectStatus.Resolved);
   const completedProjects = projects.filter((project) => project.status === ProjectStatus.Resolved);
 
@@ -631,6 +705,8 @@ export function useMidpoint() {
   const freelancerProjectIds = new Set(freelancerProjects.map((project) => project.id.toString()));
   const clientHistory = history.filter((entry) => clientProjectIds.has(entry.projectId.toString()));
   const freelancerHistory = history.filter((entry) => freelancerProjectIds.has(entry.projectId.toString()));
+  const clientCompletedOrders = allCompletedOrders.filter((o) => clientProjectIds.has(o.projectId.toString()));
+  const freelancerCompletedOrders = allCompletedOrders.filter((o) => freelancerProjectIds.has(o.projectId.toString()));
 
   async function refresh() {
     await queryClient.invalidateQueries();
@@ -922,7 +998,8 @@ export function useMidpoint() {
       isLoadingHistory ||
       isLoadingCreatedAt ||
       isLoadingStatusMeta ||
-      isLoadingEventDescriptions,
+      isLoadingEventDescriptions ||
+      isLoadingCompletedOrders,
     projects,
     activeProjects,
     completedProjects,
@@ -940,6 +1017,10 @@ export function useMidpoint() {
     history,
     clientHistory,
     freelancerHistory,
+    clientCompletedOrders,
+    freelancerCompletedOrders,
+    isCompletedOrdersError,
+    refetchCompletedOrders,
     createProjectNative,
     createProjectUSDC,
     submitWork,

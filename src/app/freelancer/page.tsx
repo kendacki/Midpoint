@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/lib/toast-context";
 import { TopNav } from "@/components/midpoint/top-nav";
 import { MotionDecor } from "@/components/midpoint/motion-decor";
 import { ProjectCard, ProjectCardSkeleton } from "@/components/midpoint/project-card";
@@ -8,6 +9,7 @@ import { ProjectStatus, useMidpoint } from "@/hooks/use-midpoint";
 
 export default function FreelancerPage() {
   const midpoint = useMidpoint();
+  const { toast } = useToast();
   const effectiveStatus = (project: (typeof midpoint.freelancerProjects)[number]) => {
     if (project.status !== ProjectStatus.Resolved && project.hasResolvedSignal) return ProjectStatus.Resolved;
     if (project.status === ProjectStatus.AwaitingSubmission && (project.submissionCid || project.hasSubmissionSignal)) {
@@ -26,7 +28,7 @@ export default function FreelancerPage() {
   ).length;
 
   return (
-    <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
+    <main id="main-content" className="midpoint-bg min-h-screen px-4 py-4 sm:px-6" tabIndex={-1}>
       <MotionDecor />
       <TopNav />
       <section className="mx-auto grid w-full max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -80,6 +82,7 @@ export default function FreelancerPage() {
                   mode="freelancer"
                   isWriting={midpoint.isWriting}
                   formatTokenAmount={midpoint.formatTokenAmount}
+                  onError={(msg) => toast(msg, "error")}
                   onSubmitWork={async (projectId, file) => {
                     const cid = await midpoint.uploadToIpfs(file);
                     await midpoint.submitWork(projectId, cid);
@@ -92,8 +95,13 @@ export default function FreelancerPage() {
                 />
               ))
             ) : (
-              <div className="glass-panel interactive-lift rounded-2xl p-6 text-sm text-zinc-600">
-                <p className="font-medium text-zinc-800">No Trustless orders yet.</p>
+              <div className="glass-panel interactive-lift flex flex-col items-center rounded-2xl p-8 text-center text-sm text-zinc-600">
+                <div className="rounded-full bg-sky-100 p-4">
+                  <svg className="h-10 w-10 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="mt-4 font-medium text-zinc-800">No Trustless orders yet.</p>
                 <p className="mt-2">Share your wallet address with clients so they can create Trustless orders for you.</p>
                 <p className="mt-2 text-xs text-zinc-500">Once a client creates an order with your address, it will appear here. Connect your wallet to get started.</p>
               </div>
@@ -102,7 +110,13 @@ export default function FreelancerPage() {
         </div>
 
         <div className="reveal-up" style={{ animationDelay: "180ms" }}>
-          <TransactionHistory title="Freelancer Transaction History" entries={midpoint.freelancerHistory} isLoading={midpoint.isLoading} />
+          <TransactionHistory
+            title="Freelancer Completed Orders"
+            entries={midpoint.freelancerCompletedOrders}
+            isLoading={midpoint.isLoading}
+            isError={midpoint.isCompletedOrdersError}
+            onRetry={midpoint.refetchCompletedOrders}
+          />
         </div>
       </section>
     </main>

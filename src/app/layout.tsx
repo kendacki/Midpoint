@@ -30,6 +30,12 @@ export default function RootLayout({
         <link rel="preload" as="video" href="/midpoint-bg.mp4" type="video/mp4" />
       </head>
       <body className={`${poppins.variable} ${montserrat.variable} antialiased`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-violet-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
+        >
+          Skip to main content
+        </a>
         <Web3Provider>{children}</Web3Provider>
       </body>
     </html>

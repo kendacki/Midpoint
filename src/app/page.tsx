@@ -34,7 +34,7 @@ export default function Home() {
     role === "client" ? "Client Live Overview" : role === "freelancer" ? "Freelancer Live Overview" : "Live Overview";
 
   return (
-    <main className="midpoint-bg min-h-screen px-4 py-4 sm:px-6">
+    <main id="main-content" className="midpoint-bg min-h-screen px-4 py-4 sm:px-6" tabIndex={-1}>
       <MotionDecor />
       <TopNav />
       <section className="mx-auto grid w-full max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[1.1fr_0.9fr]">
