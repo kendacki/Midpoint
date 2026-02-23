@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatDistanceStrict } from "date-fns";
 import { Address, zeroAddress } from "viem";
 import { Flame, Loader2, Upload } from "lucide-react";
+import { CopyButton } from "@/components/midpoint/copy-button";
 import { MidpointProject, ProjectStatus } from "@/hooks/use-midpoint";
 import { normalizeTxError } from "@/lib/error-messages";
 import { Button } from "@/components/ui/button";
@@ -170,27 +171,25 @@ export function ProjectCard({
     return formatDistanceStrict(nowMs, nowMs + remainingSec * 1000);
   }, [cycleAnchorSec, effectiveStatus, nowMs]);
 
-  if (mode === "freelancer") {
-    console.log("Freelancer TX Data:", {
-      projectId: project.id.toString(),
-      description: project.description || null,
-      status: project.status,
-      effectiveStatus,
-      token: project.token,
-      totalAmount: project.totalAmount.toString(),
-      submissionCid: project.submissionCid || null,
-    });
-  }
-
   return (
     <article className="glass-panel interactive-lift rounded-2xl p-4 sm:p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="font-semibold text-zinc-900">{project.description || `Project #${project.id.toString()}`}</h4>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h4 className="font-semibold text-zinc-900">{project.description || `Project #${project.id.toString()}`}</h4>
+          <CopyButton text={project.id.toString()} label="Copy project ID" size="xs" />
+        </div>
         <Badge variant={effectiveStatus === ProjectStatus.Disputed ? "destructive" : "secondary"}>{statusLabel(effectiveStatus)}</Badge>
       </div>
-      <p className="text-xs text-zinc-600">
-        Client: {shortAddress(project.client)} · Freelancer: {shortAddress(project.freelancer)}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600">
+        <span className="inline-flex items-center gap-1">
+          Client: {shortAddress(project.client)}
+          <CopyButton text={project.client} label="Copy client address" size="xs" />
+        </span>
+        <span className="inline-flex items-center gap-1">
+          Freelancer: {shortAddress(project.freelancer)}
+          <CopyButton text={project.freelancer} label="Copy freelancer address" size="xs" />
+        </span>
+      </div>
       {project.description ? (
         <div className="mt-2 rounded-xl border border-violet-200/70 bg-violet-50/70 p-3 text-sm text-zinc-700">
           <span className="font-semibold text-violet-800">Project details: </span>
@@ -259,7 +258,7 @@ export function ProjectCard({
             >
               Apply Burn
             </Button>
-            <Input value={settlementCut} onChange={(event) => setSettlementCut(event.target.value)} placeholder="Freelancer bps" />
+            <Input value={settlementCut} onChange={(event) => setSettlementCut(event.target.value)} placeholder="Freelancer share % (e.g. 5000 = 50%)" title="Base points: 10000 = 100%. 5000 = 50% to freelancer." />
             <Button
               size="sm"
               variant="outline"
@@ -364,7 +363,8 @@ export function ProjectCard({
             </Button>
             <a
               href={`mailto:condoleezzatobi@gmail.com?subject=${encodeURIComponent(`Midpoint Escrow Dispute Ticket - Project #${project.id}`)}`}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-500"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-red-600 px-4 text-sm font-medium text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+              aria-label="Open dispute ticket email"
             >
               Dispute
             </a>

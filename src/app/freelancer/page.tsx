@@ -34,6 +34,11 @@ export default function FreelancerPage() {
           <div className="glass-panel interactive-lift reveal-up rounded-3xl p-6">
             <h1 className="font-montserrat text-2xl font-bold text-zinc-900 sm:text-3xl">Freelancer Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600">Submit work, monitor review timers, and claim funds when eligible.</p>
+            {!midpoint.isConnected ? (
+              <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Connect your wallet above to view your projects and submit work.
+              </p>
+            ) : null}
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="mini-glass interactive-lift">
                 <p className="text-xs uppercase text-zinc-500">Pending</p>
@@ -81,7 +86,11 @@ export default function FreelancerPage() {
                 />
               ))
             ) : (
-              <div className="glass-panel interactive-lift rounded-2xl p-4 text-sm text-zinc-600">No freelancer projects yet.</div>
+              <div className="glass-panel interactive-lift rounded-2xl p-6 text-sm text-zinc-600">
+                <p className="font-medium text-zinc-800">No freelancer projects yet.</p>
+                <p className="mt-2">Share your wallet address with clients so they can create escrow projects for you.</p>
+                <p className="mt-2 text-xs text-zinc-500">Once a client creates a project with your address, it will appear here. Connect your wallet to get started.</p>
+              </div>
             )}
           </div>
         </div>

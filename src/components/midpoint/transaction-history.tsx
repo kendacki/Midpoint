@@ -1,4 +1,5 @@
 import { MidpointHistoryEntry } from "@/hooks/use-midpoint";
+import { CopyButton } from "@/components/midpoint/copy-button";
 
 function shortHash(txHash: string) {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
@@ -24,14 +25,18 @@ export function TransactionHistory({
             </div>
             <div className="mt-1 flex flex-col items-start justify-between gap-1 text-xs text-zinc-600 sm:flex-row sm:items-center">
               <span>Block {entry.blockNumber.toString()}</span>
-              <a
-                className="break-all underline"
-                href={`https://www.oklink.com/amoy/tx/${entry.txHash}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {shortHash(entry.txHash)}
-              </a>
+              <div className="inline-flex items-center gap-1">
+                <a
+                  className="break-all underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 rounded"
+                  href={`https://www.oklink.com/amoy/tx/${entry.txHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`View transaction ${shortHash(entry.txHash)} on explorer`}
+                >
+                  {shortHash(entry.txHash)}
+                </a>
+                <CopyButton text={entry.txHash} label="Copy transaction hash" size="xs" />
+              </div>
             </div>
           </div>
         ))}

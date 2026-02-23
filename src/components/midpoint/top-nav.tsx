@@ -18,16 +18,16 @@ export function TopNav() {
         </div>
       </div>
       <nav className="mt-3 flex flex-wrap items-center justify-center gap-2 overflow-x-auto pb-1 text-sm font-medium text-zinc-700 md:hidden">
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/">Home</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/client">Client</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/freelancer">Freelancer</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/documentation">Documentation</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/">Home</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/client">Client</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/freelancer">Freelancer</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/documentation">Documentation</Link>
       </nav>
       <nav className="mt-2 hidden flex-wrap items-center justify-center gap-2 text-sm font-medium text-zinc-700 md:flex lg:gap-3">
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/">Home</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/client">Client</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/freelancer">Freelancer</Link>
-        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98]" href="/documentation">Documentation</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/">Home</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/client">Client</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/freelancer">Freelancer</Link>
+        <Link className="rounded-lg border border-white/60 bg-white/45 px-3 py-1.5 whitespace-nowrap transition hover:scale-[1.03] hover:bg-white/65 hover:text-zinc-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2" href="/documentation">Documentation</Link>
       </nav>
     </header>
   );
