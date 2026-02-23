@@ -712,6 +712,47 @@ export function useMidpoint() {
     await queryClient.invalidateQueries();
   }
 
+  function getProjectIdFromReceipt(receipt: { logs: { address?: Address; data: `0x${string}`; topics: readonly `0x${string}`[] }[] }): bigint | undefined {
+    if (!escrowAddress) return undefined;
+    for (const log of receipt.logs) {
+      if (!log.address || log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
+      const topics = log.topics as [signature: `0x${string}`, ...args: `0x${string}`[]];
+      try {
+        const decoded = decodeEventLog({
+          abi: [projectCreatedEventV2],
+          data: log.data,
+          topics,
+        });
+        if (decoded.eventName === "ProjectCreated" && decoded.args.projectId) {
+          return decoded.args.projectId as bigint;
+        }
+      } catch {
+        try {
+          const decoded = decodeEventLog({
+            abi: [projectCreatedEventV1],
+            data: log.data,
+            topics,
+          });
+          if (decoded.eventName === "ProjectCreated" && decoded.args.projectId) {
+            return decoded.args.projectId as bigint;
+          }
+        } catch {
+          // Skip
+        }
+      }
+    }
+    return undefined;
+  }
+
+  function optimisticallyAddProjectId(projectId: bigint) {
+    const key = ["midpoint-scoped-project-ids", escrowAddress, address] as const;
+    queryClient.setQueryData(key, (old: bigint[] | undefined) => {
+      const ids = old ?? [];
+      if (ids.some((id) => id === projectId)) return ids;
+      return [...ids, projectId].sort((a, b) => Number(b - a));
+    });
+  }
+
   useEffect(() => {
     if (!publicClient || !escrowAddress || !isConnected) return;
 
@@ -771,6 +812,7 @@ export function useMidpoint() {
     functionName: string;
     args: readonly unknown[];
     value?: bigint;
+    skipRefresh?: boolean;
   }) {
     if (!publicClient) throw new Error("Public client unavailable");
     const feeEstimate = await publicClient.estimateFeesPerGas();
@@ -801,7 +843,7 @@ export function useMidpoint() {
 
     const hash = await writeContractAsync(txRequest as never);
     await publicClient.waitForTransactionReceipt({ hash });
-    await refresh();
+    if (!args.skipRefresh) await refresh();
     return hash;
   }
 
@@ -869,8 +911,13 @@ export function useMidpoint() {
       functionName: "createProjectNative",
       args: supportsProjectDescription ? [freelancer, sanitizedDescription] : [freelancer],
       value: parseEther(amount),
+      skipRefresh: true,
     });
+    const receipt = publicClient ? await publicClient.getTransactionReceipt({ hash }).catch(() => null) : null;
+    const projectId = receipt ? getProjectIdFromReceipt(receipt) : undefined;
+    if (projectId) optimisticallyAddProjectId(projectId);
     await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
+    await queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "midpoint-scoped-project-ids" });
     return hash;
   }
 
@@ -908,8 +955,13 @@ export function useMidpoint() {
       address: escrowAddress,
       functionName: "createProjectERC20",
       args: [usdcAddress, freelancer, amountWei, supportsProjectDescription ? sanitizedDescription : ""],
+      skipRefresh: true,
     });
+    const receipt = publicClient ? await publicClient.getTransactionReceipt({ hash }).catch(() => null) : null;
+    const projectId = receipt ? getProjectIdFromReceipt(receipt) : undefined;
+    if (projectId) optimisticallyAddProjectId(projectId);
     await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
+    await queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "midpoint-scoped-project-ids" });
     return hash;
   }
 
