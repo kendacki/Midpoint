@@ -12,6 +12,7 @@ These are in `.gitignore` and must **never** be committed:
 | `.env.local` | Local overrides (Pinata keys, deployer private key, etc.) |
 | `.env*.local` | Environment-specific secrets |
 | `*.pem` | Private keys / certificates |
+| `secrets.json`, `credentials.json`, `private-*.json` | Credential files |
 | `/node_modules` | Dependencies (reinstall via `npm install`) |
 | `/.next/`, `/build/`, `/artifacts/` | Build output |
 
