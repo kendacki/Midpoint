@@ -129,7 +129,7 @@ body {
   object-fit: cover;
   object-position: center center;
   z-index: 0;
-  filter: blur(4px) saturate(1.02) brightness(0.82);
+  filter: saturate(1.02) brightness(0.92);
   opacity: 1;
   transform: none;
   animation: none;
@@ -140,9 +140,9 @@ body {
   inset: -5%;
   z-index: 1;
   background:
-    radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.14), transparent 32%),
-    radial-gradient(circle at 84% 24%, rgba(176, 205, 255, 0.1), transparent 35%),
-    linear-gradient(180deg, rgba(236, 242, 255, 0.18) 0%, rgba(232, 240, 255, 0.24) 46%, rgba(233, 245, 255, 0.28) 100%);
+    radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.06), transparent 32%),
+    radial-gradient(circle at 84% 24%, rgba(176, 205, 255, 0.04), transparent 35%),
+    linear-gradient(180deg, rgba(236, 242, 255, 0.08) 0%, rgba(232, 240, 255, 0.1) 46%, rgba(233, 245, 255, 0.12) 100%);
 }
 
 .video-bg-base {
