@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useEffect, useRef } from "react";
 
 export function MotionDecor() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -27,24 +27,28 @@ export function MotionDecor() {
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const applyPlaybackRate = () => {
-      video.playbackRate = 0.6;
+    video.playbackRate = 0.6;
+    const play = () => {
+      video.play().catch(() => {});
     };
 
-    applyPlaybackRate();
-    video.addEventListener("loadedmetadata", applyPlaybackRate);
+    play();
+    if (video.readyState >= 2) play();
+    video.addEventListener("loadeddata", play);
+    video.addEventListener("canplay", play);
     return () => {
-      video.removeEventListener("loadedmetadata", applyPlaybackRate);
+      video.removeEventListener("loadeddata", play);
+      video.removeEventListener("canplay", play);
     };
   }, []);
 
   return (
     <div className="parallax-layer" aria-hidden="true">
-      <video ref={videoRef} className="video-bg-video" autoPlay muted loop playsInline preload="auto">
+      <video ref={videoRef} className="video-bg-video" autoPlay muted loop playsInline preload="auto" disablePictureInPicture disableRemotePlayback>
         <source src="/midpoint-bg.mp4" type="video/mp4" />
       </video>
       <div className="video-bg-tint" />

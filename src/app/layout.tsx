@@ -26,6 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" as="video" href="/midpoint-bg.mp4" type="video/mp4" />
+      </head>
       <body className={`${poppins.variable} ${montserrat.variable} antialiased`}>
         <Web3Provider>{children}</Web3Provider>
       </body>
