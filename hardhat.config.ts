@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomiclabs/hardhat-etherscan";
 import { config as loadEnv } from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
