@@ -946,6 +946,7 @@ export function useMidpoint() {
     await ensureUSDCApproval(parsedUsdcAmount, options?.onPhase);
 
     options?.onPhase?.("awaitingCreation");
+    // ERC-20 create: NO native value. Args: [token, freelancer, amount, description?]
     const hash = await writeContractAsync({
       abi: midpointEscrowAbi,
       address: escrowAddress as Address,

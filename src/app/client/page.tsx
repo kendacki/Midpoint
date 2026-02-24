@@ -176,12 +176,14 @@ export default function ClientPage() {
     } catch (err: unknown) {
       console.error("FULL TX ERROR:", err);
       let errorMessage = "Transaction failed.";
-      const e = err as { walk?: (fn: (x: unknown) => boolean) => unknown; shortMessage?: string; message?: string; data?: { message?: string }; reason?: string };
+      const e = err as { walk?: (fn: (x: unknown) => unknown) => unknown; shortMessage?: string; message?: string; data?: { message?: string }; reason?: string };
       if (e?.walk && typeof e.walk === "function") {
-        const revertError = e.walk((x: unknown) => (x as { name?: string }).name === "ContractFunctionRevertedError");
+        const revertError = e.walk((x: unknown) => ((x as { name?: string }).name === "ContractFunctionRevertedError" ? x : undefined)) as
+          | { data?: { message?: string }; reason?: string; shortMessage?: string; message?: string }
+          | undefined;
         if (revertError) {
-          const r = revertError as { data?: { message?: string }; reason?: string; shortMessage?: string };
-          errorMessage = `Contract Reverted: ${r.data?.message ?? r.reason ?? r.shortMessage ?? "Unknown"}`;
+          const r = revertError;
+          errorMessage = `Contract Reverted: ${r.data?.message ?? r.reason ?? r.shortMessage ?? r.message ?? "Unknown"}`;
           console.error("SOLIDITY REVERT REASON:", revertError);
         } else {
           errorMessage = e.shortMessage ?? e.message ?? String(err);
