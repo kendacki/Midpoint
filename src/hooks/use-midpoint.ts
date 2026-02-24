@@ -13,7 +13,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { Address, decodeEventLog, formatUnits, parseAbiItem, parseEther, parseUnits, zeroAddress } from "viem";
+import { Address, decodeEventLog, erc20Abi, formatUnits, parseAbiItem, parseEther, parseUnits, zeroAddress } from "viem";
 import { midpointEscrowAbi } from "@/lib/abis/midpointEscrow";
 
 export enum ProjectStatus {
@@ -62,8 +62,8 @@ export type CompletedOrderEntry = {
   token: Address;
 };
 
-const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as Address | undefined;
-const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as Address | undefined;
+const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as `0x${string}` | undefined;
+const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as `0x${string}` | undefined;
 const projectCreatedEventV1 = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount)"
 );
@@ -886,14 +886,9 @@ export function useMidpoint() {
     return hash;
   }
 
-  const erc20Abi = [
-    { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }] },
-    { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
-  ] as const;
-
   /** USDC on Polygon uses 6 decimals. Strict sequential: check allowance -> approve if needed -> wait for receipt. */
   async function ensureUSDCApproval(
-    amountWei: bigint,
+    parsedUsdcAmount: bigint,
     onPhase?: (phase: "awaitingApproval" | "awaitingCreation") => void
   ): Promise<void> {
     if (!address || !usdcAddress || !escrowAddress || !publicClient) {
@@ -901,22 +896,21 @@ export function useMidpoint() {
     }
     const allowance = (await publicClient.readContract({
       abi: erc20Abi,
-      address: usdcAddress,
+      address: usdcAddress as Address,
       functionName: "allowance",
       args: [address, escrowAddress],
     })) as bigint;
-    if (allowance >= amountWei) return;
+    if (allowance >= parsedUsdcAmount) return;
 
     onPhase?.("awaitingApproval");
-    const approvalHash = await sendContractTx({
+    const approveHash = await writeContractAsync({
       abi: erc20Abi,
-      address: usdcAddress,
+      address: usdcAddress as Address,
       functionName: "approve",
-      args: [escrowAddress, amountWei],
-      skipRefresh: true,
+      args: [escrowAddress, parsedUsdcAmount],
     });
-    console.log("Approval TX hash:", approvalHash);
-    // Receipt awaited in sendContractTx; approval is confirmed on-chain before we proceed to create.
+    console.log("Approval TX hash:", approveHash);
+    await publicClient.waitForTransactionReceipt({ hash: approveHash });
   }
 
   async function createProjectUSDC(
@@ -929,17 +923,16 @@ export function useMidpoint() {
     if (!usdcAddress) throw new Error("Missing NEXT_PUBLIC_USDC_AMOY_ADDRESS");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
-    // USDC on Polygon uses 6 decimals. Do not use 18.
-    const amountWei = parseUnits(amount, 6);
+    const parsedUsdcAmount: bigint = parseUnits(amount, 6);
 
-    await ensureUSDCApproval(amountWei, options?.onPhase);
+    await ensureUSDCApproval(parsedUsdcAmount, options?.onPhase);
 
     options?.onPhase?.("awaitingCreation");
     const hash = await sendContractTx({
       abi: midpointEscrowAbi,
-      address: escrowAddress,
+      address: escrowAddress as Address,
       functionName: "createProjectERC20",
-      args: [usdcAddress, freelancer, amountWei, supportsProjectDescription ? sanitizedDescription : ""],
+      args: [usdcAddress, freelancer, parsedUsdcAmount, supportsProjectDescription ? sanitizedDescription : ""],
       skipRefresh: true,
     });
     console.log("Creation TX hash:", hash);

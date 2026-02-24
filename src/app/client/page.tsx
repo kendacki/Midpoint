@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Address, isAddress } from "viem";
 import { MotionDecor } from "@/components/midpoint/motion-decor";
 import { TopNav } from "@/components/midpoint/top-nav";
@@ -10,7 +10,9 @@ import { TransactionHistory } from "@/components/midpoint/transaction-history";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useMidpoint, ProjectStatus } from "@/hooks/use-midpoint";
-import { normalizeTxError } from "@/lib/error-messages";
+import { isUserRejection, normalizeTxError } from "@/lib/error-messages";
+
+type TxStatus = "idle" | "approving" | "creating" | "success" | "error";
 
 export default function ClientPage() {
   const midpoint = useMidpoint();
@@ -19,11 +21,8 @@ export default function ClientPage() {
   const [description, setDescription] = useState("");
   const [nativeAmount, setNativeAmount] = useState("0.1");
   const [usdcAmount, setUsdcAmount] = useState("25");
-  const [isCreating, setIsCreating] = useState(false);
-  const [triggeredType, setTriggeredType] = useState<"pol" | "usdc" | null>(null);
-  const [createdType, setCreatedType] = useState<"pol" | "usdc" | null>(null);
-  const [polPhase, setPolPhase] = useState<"idle" | "awaitingCreation" | "success">("idle");
-  const [usdcPhase, setUsdcPhase] = useState<"idle" | "awaitingApproval" | "awaitingCreation" | "success">("idle");
+  const [polTxStatus, setPolTxStatus] = useState<TxStatus>("idle");
+  const [usdcTxStatus, setUsdcTxStatus] = useState<TxStatus>("idle");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,97 +43,137 @@ export default function ClientPage() {
     (project) => effectiveStatus(project) === ProjectStatus.Resolved
   ).length;
 
+  const isPolBusy = polTxStatus === "creating";
+  const isUsdcBusy = usdcTxStatus === "approving" || usdcTxStatus === "creating";
+  const isAnyBusy = isPolBusy || isUsdcBusy;
+
+  useEffect(() => {
+    if (polTxStatus !== "success") return;
+    const t = setTimeout(() => setPolTxStatus("idle"), 3000);
+    return () => clearTimeout(t);
+  }, [polTxStatus]);
+
+  useEffect(() => {
+    if (usdcTxStatus !== "success") return;
+    const t = setTimeout(() => setUsdcTxStatus("idle"), 3000);
+    return () => clearTimeout(t);
+  }, [usdcTxStatus]);
+
+  function getPolButtonText(): string {
+    switch (polTxStatus) {
+      case "creating":
+        return "Creating Escrow (1/1)...";
+      case "success":
+        return "Success!";
+      case "error":
+        return "Try Again";
+      default:
+        return "Create POL Escrow";
+    }
+  }
+
+  function getUsdcButtonText(): string {
+    switch (usdcTxStatus) {
+      case "approving":
+        return "Approving USDC (1/2)...";
+      case "creating":
+        return "Creating Escrow (2/2)...";
+      case "success":
+        return "Success!";
+      case "error":
+        return "Try Again";
+      default:
+        return "Create USDC Escrow";
+    }
+  }
+
   async function handleCreateNative() {
     setError(null);
     setSuccessMessage(null);
-    setCreatedType(null);
-    setPolPhase("idle");
     if (!isAddress(freelancer.trim())) {
       setError("Invalid freelancer wallet address.");
       return;
     }
-    setTriggeredType("pol");
-    setIsCreating(true);
-    let txFailed = false;
+    setPolTxStatus("creating");
     try {
       await midpoint.createProjectNative(freelancer.trim() as Address, nativeAmount, description, {
-        onPhase: (phase) => setPolPhase(phase),
+        onPhase: () => setPolTxStatus("creating"),
       });
       setFreelancer("");
       setDescription("");
-      setCreatedType("pol");
-      setPolPhase("success");
+      setPolTxStatus("success");
       setSuccessMessage("POL escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("POL escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
       void midpoint.refresh();
-    } catch (err) {
-      txFailed = true;
-      console.error("TX Error (POL):", err);
+    } catch (err: unknown) {
+      const e = err as { shortMessage?: string; message?: string };
+      console.error("TX Error (POL):", e.shortMessage ?? e.message ?? err);
       if (err && typeof err === "object" && "message" in err && String((err as { message?: unknown }).message).includes("429")) {
-        console.error("RPC rate limit (429) detected. Consider using a private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL in wagmi-config.");
+        console.error("RPC rate limit (429). Use private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL.");
+      }
+      if (isUserRejection(err)) {
+        setPolTxStatus("idle");
+        toast("Transaction rejected by user", "error");
+        return;
       }
       try {
         const msg = normalizeTxError(err);
         setError(msg);
+        setPolTxStatus("error");
         toast(msg, "error");
       } catch (parseErr) {
         console.error("Error parsing TX error:", parseErr);
+        setPolTxStatus("error");
       }
     } finally {
-      setIsCreating(false);
-      if (txFailed) {
-        setTriggeredType(null);
-        setCreatedType(null);
-        setPolPhase("idle");
-      }
+      setPolTxStatus((prev) => (prev === "creating" ? "error" : prev));
     }
   }
 
   async function handleCreateUSDC() {
     setError(null);
     setSuccessMessage(null);
-    setCreatedType(null);
-    setUsdcPhase("idle");
     if (!isAddress(freelancer.trim())) {
       setError("Invalid freelancer wallet address.");
       return;
     }
-    setTriggeredType("usdc");
-    setIsCreating(true);
-    let txFailed = false;
+    setUsdcTxStatus("approving");
     try {
       await midpoint.createProjectUSDC(freelancer.trim() as Address, usdcAmount, description, {
-        onPhase: (phase) => setUsdcPhase(phase),
+        onPhase: (phase) => {
+          setUsdcTxStatus(phase === "awaitingApproval" ? "approving" : "creating");
+        },
       });
       setFreelancer("");
       setDescription("");
-      setCreatedType("usdc");
-      setUsdcPhase("success");
+      setUsdcTxStatus("success");
       setSuccessMessage("USDC escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("USDC escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
       void midpoint.refresh();
-    } catch (err) {
-      txFailed = true;
-      console.error("TX Error (USDC):", err);
+    } catch (err: unknown) {
+      const e = err as { shortMessage?: string; message?: string };
+      console.error("TX Error (USDC):", e.shortMessage ?? e.message ?? err);
       if (err && typeof err === "object" && "message" in err && String((err as { message?: unknown }).message).includes("429")) {
-        console.error("RPC rate limit (429) detected. Consider using a private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL in wagmi-config.");
+        console.error("RPC rate limit (429). Use private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL.");
+      }
+      if (isUserRejection(err)) {
+        setUsdcTxStatus("idle");
+        toast("Transaction rejected by user", "error");
+        return;
       }
       try {
         const msg = normalizeTxError(err);
         setError(msg);
+        setUsdcTxStatus("error");
         toast(msg, "error");
       } catch (parseErr) {
         console.error("Error parsing TX error:", parseErr);
+        setUsdcTxStatus("error");
       }
     } finally {
-      setIsCreating(false);
-      if (txFailed) {
-        setTriggeredType(null);
-        setCreatedType(null);
-        setUsdcPhase("idle");
-      }
+      setUsdcTxStatus((prev) => (prev === "approving" || prev === "creating" ? "error" : prev));
     }
   }
 
@@ -178,40 +217,30 @@ export default function ClientPage() {
                 <Input value={nativeAmount} onChange={(e) => setNativeAmount(e.target.value)} placeholder="POL amount" />
                 <Button
                   className={`!h-10 !rounded-xl ${
-                    createdType === "pol" || triggeredType === "pol"
+                    polTxStatus === "success" || polTxStatus === "creating"
                       ? "border border-emerald-300 bg-emerald-500/90 text-white"
-                      : "glass-button"
+                      : polTxStatus === "error"
+                        ? "border border-amber-300 bg-amber-500/90 text-white"
+                        : "glass-button"
                   }`}
                   onClick={handleCreateNative}
-                  disabled={!midpoint.isConnected || isCreating || midpoint.isWriting || !isAddress(freelancer.trim())}
+                  disabled={!midpoint.isConnected || isAnyBusy || midpoint.isWriting || !isAddress(freelancer.trim())}
                 >
-                  {createdType === "pol"
-                    ? "POL Escrow Created"
-                    : polPhase === "awaitingCreation"
-                      ? "Awaiting Creation…"
-                      : triggeredType === "pol" && (isCreating || midpoint.isWriting)
-                        ? "POL Escrow Triggered"
-                        : "Create POL Escrow"}
+                  {getPolButtonText()}
                 </Button>
                 <Input value={usdcAmount} onChange={(e) => setUsdcAmount(e.target.value)} placeholder="USDC amount" />
                 <Button
                   className={`!h-10 !rounded-xl ${
-                    createdType === "usdc" || triggeredType === "usdc"
+                    usdcTxStatus === "success" || usdcTxStatus === "approving" || usdcTxStatus === "creating"
                       ? "border border-emerald-300 bg-emerald-500/90 text-white"
-                      : "glass-button"
+                      : usdcTxStatus === "error"
+                        ? "border border-amber-300 bg-amber-500/90 text-white"
+                        : "glass-button"
                   }`}
                   onClick={handleCreateUSDC}
-                  disabled={!midpoint.isConnected || isCreating || midpoint.isWriting || !isAddress(freelancer.trim())}
+                  disabled={!midpoint.isConnected || isAnyBusy || midpoint.isWriting || !isAddress(freelancer.trim())}
                 >
-                  {createdType === "usdc"
-                    ? "USDC Escrow Created"
-                    : usdcPhase === "awaitingApproval"
-                      ? "Awaiting Approval…"
-                      : usdcPhase === "awaitingCreation"
-                        ? "Awaiting Creation…"
-                        : triggeredType === "usdc" && (isCreating || midpoint.isWriting)
-                          ? "USDC Escrow Triggered"
-                          : "Create USDC Escrow"}
+                  {getUsdcButtonText()}
                 </Button>
               </div>
               {successMessage ? (
