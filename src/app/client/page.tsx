@@ -174,9 +174,21 @@ export default function ClientPage() {
       setTimeout(() => setSuccessMessage(null), 6000);
       void midpoint.refresh();
     } catch (err: unknown) {
-      console.error("ESCROW CRASH:", err);
-      const e = err as { shortMessage?: string; message?: string };
-      const errMsg = e.shortMessage ?? e.message ?? String(err);
+      console.error("FULL TX ERROR:", err);
+      let errorMessage = "Transaction failed.";
+      const e = err as { walk?: (fn: (x: unknown) => boolean) => unknown; shortMessage?: string; message?: string; data?: { message?: string }; reason?: string };
+      if (e?.walk && typeof e.walk === "function") {
+        const revertError = e.walk((x: unknown) => (x as { name?: string }).name === "ContractFunctionRevertedError");
+        if (revertError) {
+          const r = revertError as { data?: { message?: string }; reason?: string; shortMessage?: string };
+          errorMessage = `Contract Reverted: ${r.data?.message ?? r.reason ?? r.shortMessage ?? "Unknown"}`;
+          console.error("SOLIDITY REVERT REASON:", revertError);
+        } else {
+          errorMessage = e.shortMessage ?? e.message ?? String(err);
+        }
+      } else {
+        errorMessage = e.shortMessage ?? e.message ?? String(err);
+      }
       if (err && typeof err === "object" && "message" in err && String((err as { message?: unknown }).message).includes("429")) {
         console.error("RPC rate limit (429). Use private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL.");
       }
@@ -185,9 +197,9 @@ export default function ClientPage() {
         toast("Transaction rejected by user", "error");
         return;
       }
-      setError(errMsg);
+      setError(errorMessage);
       setUsdcTxStatus("error");
-      toast(errMsg, "error");
+      toast(errorMessage, "error");
     } finally {
       setTimeout(() => {
         if (midpoint.resetWriteContract) midpoint.resetWriteContract();

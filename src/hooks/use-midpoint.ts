@@ -952,6 +952,7 @@ export function useMidpoint() {
       functionName: "createProjectERC20",
       args: [usdcAddress, freelancer, parsedUsdcAmount, supportsProjectDescription ? sanitizedDescription : ""],
       gas: GAS_OVERRIDE_AMOY,
+      value: 0n,
     });
     console.log("Creation TX hash:", hash);
     const createReceipt = await publicClient!.waitForTransactionReceipt({ hash });
