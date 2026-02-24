@@ -30,7 +30,7 @@ Disputes include Midpoint's "decay pressure" model:
 
 ## Next Steps & Roadmap 
 
-Multi-Tranche Milestone Smart ContractsL:
+Multi-Tranche Milestone Smart Contracts:
 
 The escrow handles single, lump-sum payouts upon project completion.
 Upgrade: Expanding the Solidity smart contract to support milestone-based funding. 
