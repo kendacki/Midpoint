@@ -70,7 +70,10 @@ export default function ClientPage() {
       void midpoint.refresh();
     } catch (err) {
       txFailed = true;
-      console.error("TX Error:", err);
+      console.error("TX Error (POL):", err);
+      if (err && typeof err === "object" && "message" in err && String((err as { message?: unknown }).message).includes("429")) {
+        console.error("RPC rate limit (429) detected. Consider using a private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL in wagmi-config.");
+      }
       try {
         const msg = normalizeTxError(err);
         setError(msg);
@@ -114,7 +117,10 @@ export default function ClientPage() {
       void midpoint.refresh();
     } catch (err) {
       txFailed = true;
-      console.error("TX Error:", err);
+      console.error("TX Error (USDC):", err);
+      if (err && typeof err === "object" && "message" in err && String((err as { message?: unknown }).message).includes("429")) {
+        console.error("RPC rate limit (429) detected. Consider using a private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL in wagmi-config.");
+      }
       try {
         const msg = normalizeTxError(err);
         setError(msg);

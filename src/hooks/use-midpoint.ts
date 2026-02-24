@@ -185,10 +185,10 @@ export function useMidpoint() {
 
       return Array.from(ids).sort((a, b) => Number(b - a));
     },
-    staleTime: 15_000,
+    staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
-    refetchInterval: 15_000,
+    refetchInterval: 45_000,
     refetchOnWindowFocus: false,
   });
 
@@ -374,7 +374,7 @@ export function useMidpoint() {
     },
     gcTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
-    refetchInterval: 15_000,
+    refetchInterval: 45_000,
     refetchOnWindowFocus: false,
   });
 
@@ -494,7 +494,7 @@ export function useMidpoint() {
     allowFailure: true,
     query: {
       enabled: Boolean(escrowAddress) && ids.length > 0,
-      refetchInterval: 15_000,
+      refetchInterval: 45_000,
       refetchOnWindowFocus: false,
     },
   });
@@ -586,7 +586,7 @@ export function useMidpoint() {
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
-    refetchInterval: 15_000,
+    refetchInterval: 45_000,
     refetchOnWindowFocus: false,
   });
 
@@ -633,7 +633,7 @@ export function useMidpoint() {
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
-    refetchInterval: 15_000,
+    refetchInterval: 45_000,
     refetchOnWindowFocus: false,
   });
 
@@ -801,6 +801,7 @@ export function useMidpoint() {
     }
 
     const hash = await writeContractAsync(txRequest as never);
+    // Strictly await receipt before returning - required for USDC approve-before-create flow.
     await publicClient.waitForTransactionReceipt({ hash });
     if (!args.skipRefresh) await refresh();
     return hash;
@@ -854,7 +855,7 @@ export function useMidpoint() {
       const map = existing ? (JSON.parse(existing) as Record<string, string>) : {};
       map[projectId.toString()] = trimmed;
       window.localStorage.setItem(key, JSON.stringify(map));
-      await refresh();
+      // Caller handles refresh to avoid RPC spam.
     } catch {
       // Best-effort fallback; no-op if unavailable.
     }
@@ -876,11 +877,12 @@ export function useMidpoint() {
       functionName: "createProjectNative",
       args: supportsProjectDescription ? [freelancer, sanitizedDescription] : [freelancer],
       value: parseEther(amount),
+      skipRefresh: true,
     });
     console.log("Creation TX hash:", hash);
     await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
     await refresh();
-    setTimeout(() => refresh(), 2000);
+    setTimeout(() => refresh(), 3000);
     return hash;
   }
 
@@ -911,9 +913,10 @@ export function useMidpoint() {
       address: usdcAddress,
       functionName: "approve",
       args: [escrowAddress, amountWei],
+      skipRefresh: true,
     });
     console.log("Approval TX hash:", approvalHash);
-    // sendContractTx awaits waitForTransactionReceipt; approval is confirmed on-chain before returning.
+    // Receipt awaited in sendContractTx; approval is confirmed on-chain before we proceed to create.
   }
 
   async function createProjectUSDC(
@@ -937,11 +940,12 @@ export function useMidpoint() {
       address: escrowAddress,
       functionName: "createProjectERC20",
       args: [usdcAddress, freelancer, amountWei, supportsProjectDescription ? sanitizedDescription : ""],
+      skipRefresh: true,
     });
     console.log("Creation TX hash:", hash);
     await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
     await refresh();
-    setTimeout(() => refresh(), 2000);
+    setTimeout(() => refresh(), 3000);
     return hash;
   }
 

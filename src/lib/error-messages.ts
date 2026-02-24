@@ -10,8 +10,8 @@ export function normalizeTxError(error: unknown): string {
   if (/user rejected|user denied|rejected the request/i.test(msg)) {
     return "Transaction was rejected. Please try again when ready.";
   }
-  if (/rate limit|Request exceeds defined limit|429/i.test(msg)) {
-    return "Too many requests. Please wait a moment and try again.";
+  if (/rate limit|Request exceeds defined limit|429|Too Many Requests/i.test(msg)) {
+    return "RPC rate limit (429). Add NEXT_PUBLIC_AMOY_RPC_URL with Alchemy/QuickNode URL in env vars.";
   }
   if (/network|fetch failed|ECONNREFUSED|ETIMEDOUT|NetworkError/i.test(msg)) {
     return "Network error. Check your connection and try again.";
