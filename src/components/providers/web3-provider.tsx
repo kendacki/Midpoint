@@ -3,18 +3,19 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { type State, WagmiProvider } from "wagmi";
+import { cookieToInitialState, WagmiProvider } from "wagmi";
 import { queryClient, wagmiConfig } from "@/lib/wagmi";
 import { polygonAmoy } from "@/lib/chains";
 import { ToastProvider } from "@/lib/toast-context";
 
 export function Web3Provider({
   children,
-  initialState,
+  cookie,
 }: {
   children: React.ReactNode;
-  initialState?: State;
+  cookie?: string;
 }) {
+  const initialState = cookie ? cookieToInitialState(wagmiConfig, cookie) : undefined;
   return (
     <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>

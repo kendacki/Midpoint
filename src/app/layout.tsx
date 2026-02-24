@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Montserrat, Poppins } from "next/font/google";
-import { cookieToInitialState } from "wagmi";
 import "./globals.css";
 import { Web3Provider } from "@/components/providers/web3-provider";
-import { wagmiConfig } from "@/lib/wagmi-config";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -28,7 +26,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const headersList = await headers();
-  const initialState = cookieToInitialState(wagmiConfig, headersList.get("cookie"));
+  const cookie = headersList.get("cookie") ?? undefined;
   return (
     <html lang="en">
       <head>
@@ -41,7 +39,7 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
-        <Web3Provider initialState={initialState}>{children}</Web3Provider>
+        <Web3Provider cookie={cookie}>{children}</Web3Provider>
       </body>
     </html>
   );
