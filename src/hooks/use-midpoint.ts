@@ -883,7 +883,11 @@ export function useMidpoint() {
     { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
   ] as const;
 
-  async function ensureUSDCApproval(amount: bigint): Promise<`0x${string}` | null> {
+  /** USDC on Polygon uses 6 decimals. Strict sequential: check allowance -> approve if needed -> wait for receipt. */
+  async function ensureUSDCApproval(
+    amountWei: bigint,
+    onPhase?: (phase: "awaitingApproval" | "awaitingCreation") => void
+  ): Promise<void> {
     if (!address || !usdcAddress || !escrowAddress || !publicClient) {
       throw new Error("Wallet and contract addresses required for USDC approval");
     }
@@ -893,24 +897,35 @@ export function useMidpoint() {
       functionName: "allowance",
       args: [address, escrowAddress],
     })) as bigint;
-    if (allowance >= amount) return null;
+    if (allowance >= amountWei) return;
+
+    onPhase?.("awaitingApproval");
     const approvalHash = await sendContractTx({
       abi: erc20Abi,
       address: usdcAddress,
       functionName: "approve",
-      args: [escrowAddress, amount],
+      args: [escrowAddress, amountWei],
     });
     console.log("Approval TX hash:", approvalHash);
-    return approvalHash;
+    // sendContractTx awaits waitForTransactionReceipt; approval is confirmed on-chain before returning.
   }
 
-  async function createProjectUSDC(freelancer: Address, amount: string, description: string) {
+  async function createProjectUSDC(
+    freelancer: Address,
+    amount: string,
+    description: string,
+    options?: { onPhase?: (phase: "awaitingApproval" | "awaitingCreation") => void }
+  ) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
     if (!usdcAddress) throw new Error("Missing NEXT_PUBLIC_USDC_AMOY_ADDRESS");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
+    // USDC on Polygon uses 6 decimals. Do not use 18.
     const amountWei = parseUnits(amount, 6);
-    await ensureUSDCApproval(amountWei);
+
+    await ensureUSDCApproval(amountWei, options?.onPhase);
+
+    options?.onPhase?.("awaitingCreation");
     const hash = await sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,

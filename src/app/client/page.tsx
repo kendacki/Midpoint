@@ -22,6 +22,7 @@ export default function ClientPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [triggeredType, setTriggeredType] = useState<"pol" | "usdc" | null>(null);
   const [createdType, setCreatedType] = useState<"pol" | "usdc" | null>(null);
+  const [usdcPhase, setUsdcPhase] = useState<"idle" | "awaitingApproval" | "awaitingCreation" | "success">("idle");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,9 +65,14 @@ export default function ClientPage() {
       void midpoint.refresh();
     } catch (err) {
       txFailed = true;
-      const msg = normalizeTxError(err);
-      setError(msg);
-      toast(msg, "error");
+      console.error("TX Error:", err);
+      try {
+        const msg = normalizeTxError(err);
+        setError(msg);
+        toast(msg, "error");
+      } catch (parseErr) {
+        console.error("Error parsing TX error:", parseErr);
+      }
     } finally {
       setIsCreating(false);
       if (txFailed) {
@@ -80,6 +86,7 @@ export default function ClientPage() {
     setError(null);
     setSuccessMessage(null);
     setCreatedType(null);
+    setUsdcPhase("idle");
     if (!isAddress(freelancer.trim())) {
       setError("Invalid freelancer wallet address.");
       return;
@@ -88,24 +95,33 @@ export default function ClientPage() {
     setIsCreating(true);
     let txFailed = false;
     try {
-      await midpoint.createProjectUSDC(freelancer.trim() as Address, usdcAmount, description);
+      await midpoint.createProjectUSDC(freelancer.trim() as Address, usdcAmount, description, {
+        onPhase: (phase) => setUsdcPhase(phase),
+      });
       setFreelancer("");
       setDescription("");
       setCreatedType("usdc");
+      setUsdcPhase("success");
       setSuccessMessage("USDC escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("USDC escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
       void midpoint.refresh();
     } catch (err) {
       txFailed = true;
-      const msg = normalizeTxError(err);
-      setError(msg);
-      toast(msg, "error");
+      console.error("TX Error:", err);
+      try {
+        const msg = normalizeTxError(err);
+        setError(msg);
+        toast(msg, "error");
+      } catch (parseErr) {
+        console.error("Error parsing TX error:", parseErr);
+      }
     } finally {
       setIsCreating(false);
       if (txFailed) {
         setTriggeredType(null);
         setCreatedType(null);
+        setUsdcPhase("idle");
       }
     }
   }
@@ -175,9 +191,13 @@ export default function ClientPage() {
                 >
                   {createdType === "usdc"
                     ? "USDC Escrow Created"
-                    : triggeredType === "usdc" && (isCreating || midpoint.isWriting)
-                      ? "USDC Escrow Triggered"
-                      : "Create USDC Escrow"}
+                    : usdcPhase === "awaitingApproval"
+                      ? "Awaiting Approval…"
+                      : usdcPhase === "awaitingCreation"
+                        ? "Awaiting Creation…"
+                        : triggeredType === "usdc" && (isCreating || midpoint.isWriting)
+                          ? "USDC Escrow Triggered"
+                          : "Create USDC Escrow"}
                 </Button>
               </div>
               {successMessage ? (
