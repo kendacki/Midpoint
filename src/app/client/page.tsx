@@ -146,7 +146,7 @@ export default function ClientPage() {
       return;
     }
     try {
-      const usdcAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` | undefined;
+      const usdcAddress = midpoint.usdcAddress;
       if (!usdcAddress || !String(usdcAddress).startsWith("0x")) {
         throw new Error("Missing USDC Address in .env");
       }

@@ -64,7 +64,8 @@ export type CompletedOrderEntry = {
 
 // Set in .env.local: NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS, NEXT_PUBLIC_USDC_ADDRESS (whitelisted Amoy USDC)
 const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as `0x${string}` | undefined;
-const usdcAddress = (process.env.NEXT_PUBLIC_USDC_ADDRESS ?? process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS) as `0x${string}` | undefined;
+const USDC_AMOY_WHITELISTED = "0x8B0180f2101c8260d49339abfEe87927412494B4" as const;
+const usdcAddress = (process.env.NEXT_PUBLIC_USDC_ADDRESS ?? process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS ?? USDC_AMOY_WHITELISTED) as `0x${string}`;
 const projectCreatedEventV1 = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount)"
 );
@@ -946,7 +947,7 @@ export function useMidpoint() {
     options?: { onPhase?: (phase: "awaitingApproval" | "awaitingCreation") => void }
   ) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
-    if (!usdcAddress || !String(usdcAddress).startsWith("0x")) throw new Error("Missing USDC Address in .env (NEXT_PUBLIC_USDC_ADDRESS)");
+    if (!String(usdcAddress).startsWith("0x")) throw new Error("Invalid USDC address configuration");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
     const parsedUsdcAmount: bigint = parseUnits(amount, 6);
