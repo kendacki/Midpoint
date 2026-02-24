@@ -108,7 +108,8 @@ export default function ClientPage() {
       setSuccessMessage("POL escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("POL escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
-      void midpoint.refresh();
+      await midpoint.refresh();
+      setTimeout(() => void midpoint.refetchEscrows(), 2500);
     } catch (err: unknown) {
       const e = err as { shortMessage?: string; message?: string };
       console.error("TX Error (POL):", e.shortMessage ?? e.message ?? err);
@@ -191,7 +192,8 @@ export default function ClientPage() {
       setSuccessMessage("USDC escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("USDC escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
-      void midpoint.refresh();
+      await midpoint.refresh();
+      setTimeout(() => void midpoint.refetchEscrows(), 2500);
     } catch (err: unknown) {
       console.error("FULL TX ERROR:", err);
       let errorMessage = "Transaction failed.";

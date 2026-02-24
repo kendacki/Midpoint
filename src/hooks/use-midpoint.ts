@@ -109,7 +109,7 @@ export function useMidpoint() {
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync, isPending: isWriting, reset: resetWriteContract } = useWriteContract();
 
-  const { data: scopedProjectIds = [], isLoading: isLoadingScopedProjects } = useQuery({
+  const { data: scopedProjectIds = [], isLoading: isLoadingScopedProjects, refetch: refetchScopedProjects } = useQuery({
     queryKey: ["midpoint-scoped-project-ids", escrowAddress, address],
     enabled: Boolean(escrowAddress && address && publicClient),
     queryFn: async () => {
@@ -711,7 +711,20 @@ export function useMidpoint() {
   const freelancerCompletedOrders = allCompletedOrders.filter((o) => freelancerProjectIds.has(o.projectId.toString()));
 
   async function refresh() {
-    await queryClient.invalidateQueries();
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-scoped-project-ids"] });
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-created-at"] });
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-status-meta"] });
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-event-descriptions"] });
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-history"] });
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-completed-orders"] });
+    await refetchScopedProjects();
+  }
+
+  /** Force refetch escrows (e.g. right after create). Call after tx confirmed. */
+  async function refetchEscrows() {
+    await refetchScopedProjects();
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-status-meta"] });
+    await queryClient.invalidateQueries({ queryKey: ["midpoint-completed-orders"] });
   }
 
   useEffect(() => {
@@ -1132,6 +1145,7 @@ export function useMidpoint() {
     isCompletedOrdersError,
     refetchCompletedOrders,
     refresh,
+    refetchEscrows,
     createProjectNative,
     createProjectUSDC,
     submitWork,
