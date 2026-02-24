@@ -14,10 +14,10 @@ Built on Polygon Amoy with a clean wallet-first dashboard.
 1. Client creates a project and funds escrow (POL or USDC).
 2. Freelancer submits work using an IPFS CID.
 3. Client reviews and either approves, disputes, or does nothing.
-4. If the review time expires, the freelancer can claim timeout payment.
+4. before the review time expires, the freelancer can create dispute.
 
 Disputes include Midpoint's "decay pressure" model:
-- unresolved disputes burn 5% of total escrow every 7 days.
+- unresolved disputes burn 5% of total escrow every 14 days.
 
 ## Main Features
 
@@ -27,6 +27,31 @@ Disputes include Midpoint's "decay pressure" model:
 - 14-day review countdown UI.
 - IPFS upload flow handled through backend API route.
 - Dispute settlement + timeout claim logic.
+
+## Multi-Tranche Milestone Smart Contracts
+
+The escrow handles single, lump-sum payouts upon project completion.
+Upgrade: Expanding the Solidity smart contract to support milestone-based funding. 
+Clients will be able to lock the total project vault upfront, 
+but release tokens (USDC/POL) in incremental percentages (e.g., 25%, 50%, 25%) 
+as the freelancer hits specific, predefined deliverables.
+
+## Decentralized Arbitration Protocol
+Disputes are routed via an automated email ticketing
+system to a central admin.
+Upgrade: Replacing the centralized email routing with an on-chain
+arbitration layer. In the event of a dispute, the funds remain locked
+while the case is securely routed to a decentralized arbitration protocol
+(such as Kleros) or a multi-sig committee to ensure fair,
+trustless resolution without platform bias.
+
+## Gasless Transactions via Account Abstraction (ERC-4337)
+Freelancers and clients need native POL in their wallets to pay 
+for gas when interacting with the escrow or claiming funds.
+Upgrade: Integrating a paymaster (like Biconomy or Alchemy's Gas Manager) 
+to sponsor transaction fees. This allows clients to fund escrows and 
+freelancers to claim their USDC without ever needing to understand 
+or purchase native gas tokens, achieving true Web2-level UX.
 
 ## Tech Stack
 
