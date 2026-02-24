@@ -860,10 +860,16 @@ export function useMidpoint() {
     }
   }
 
-  async function createProjectNative(freelancer: Address, amount: string, description: string) {
+  async function createProjectNative(
+    freelancer: Address,
+    amount: string,
+    description: string,
+    options?: { onPhase?: (phase: "awaitingCreation") => void }
+  ) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
+    options?.onPhase?.("awaitingCreation");
     const hash = await sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress,

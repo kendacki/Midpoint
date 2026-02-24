@@ -22,6 +22,7 @@ export default function ClientPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [triggeredType, setTriggeredType] = useState<"pol" | "usdc" | null>(null);
   const [createdType, setCreatedType] = useState<"pol" | "usdc" | null>(null);
+  const [polPhase, setPolPhase] = useState<"idle" | "awaitingCreation" | "success">("idle");
   const [usdcPhase, setUsdcPhase] = useState<"idle" | "awaitingApproval" | "awaitingCreation" | "success">("idle");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,7 @@ export default function ClientPage() {
     setError(null);
     setSuccessMessage(null);
     setCreatedType(null);
+    setPolPhase("idle");
     if (!isAddress(freelancer.trim())) {
       setError("Invalid freelancer wallet address.");
       return;
@@ -55,10 +57,13 @@ export default function ClientPage() {
     setIsCreating(true);
     let txFailed = false;
     try {
-      await midpoint.createProjectNative(freelancer.trim() as Address, nativeAmount, description);
+      await midpoint.createProjectNative(freelancer.trim() as Address, nativeAmount, description, {
+        onPhase: (phase) => setPolPhase(phase),
+      });
       setFreelancer("");
       setDescription("");
       setCreatedType("pol");
+      setPolPhase("success");
       setSuccessMessage("POL escrow created. Share your wallet address with the freelancer so they can see the project.");
       toast("POL escrow created successfully", "success");
       setTimeout(() => setSuccessMessage(null), 6000);
@@ -78,6 +83,7 @@ export default function ClientPage() {
       if (txFailed) {
         setTriggeredType(null);
         setCreatedType(null);
+        setPolPhase("idle");
       }
     }
   }
@@ -175,9 +181,11 @@ export default function ClientPage() {
                 >
                   {createdType === "pol"
                     ? "POL Escrow Created"
-                    : triggeredType === "pol" && (isCreating || midpoint.isWriting)
-                      ? "POL Escrow Triggered"
-                      : "Create POL Escrow"}
+                    : polPhase === "awaitingCreation"
+                      ? "Awaiting Creation…"
+                      : triggeredType === "pol" && (isCreating || midpoint.isWriting)
+                        ? "POL Escrow Triggered"
+                        : "Create POL Escrow"}
                 </Button>
                 <Input value={usdcAmount} onChange={(e) => setUsdcAmount(e.target.value)} placeholder="USDC amount" />
                 <Button
