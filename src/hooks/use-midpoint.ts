@@ -13,7 +13,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { Address, decodeEventLog, erc20Abi, formatUnits, parseAbiItem, parseEther, parseUnits, zeroAddress } from "viem";
+import { Address, decodeEventLog, erc20Abi, formatUnits, parseAbiItem, parseEther, parseGwei, parseUnits, zeroAddress } from "viem";
 import { midpointEscrowAbi } from "@/lib/abis/midpointEscrow";
 
 export enum ProjectStatus {
@@ -909,7 +909,10 @@ export function useMidpoint() {
 
     onPhase?.("awaitingApproval");
 
-    const feeParams = await getAmoyFeeParams();
+    const gasOverrides = {
+      maxPriorityFeePerGas: parseGwei("30"),
+      maxFeePerGas: parseGwei("40"),
+    };
     if (allowance > 0n && allowance < parsedUsdcAmount) {
       const resetHash = await writeContractAsync({
         abi: erc20Abi,
@@ -917,7 +920,7 @@ export function useMidpoint() {
         functionName: "approve",
         args: [escrowAddress, 0n],
         gas: GAS_OVERRIDE_AMOY,
-        ...feeParams,
+        ...gasOverrides,
       });
       const resetReceipt = await publicClient.waitForTransactionReceipt({ hash: resetHash });
       if (resetReceipt.status !== "success") throw new Error("Allowance reset failed on-chain");
@@ -929,7 +932,7 @@ export function useMidpoint() {
       functionName: "approve",
       args: [escrowAddress, parsedUsdcAmount],
       gas: GAS_OVERRIDE_AMOY,
-      ...feeParams,
+      ...gasOverrides,
     });
     console.log("Approval TX hash:", approveHash);
     const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -951,14 +954,16 @@ export function useMidpoint() {
     await ensureUSDCApproval(parsedUsdcAmount, options?.onPhase);
 
     options?.onPhase?.("awaitingCreation");
-    // ERC-20 create: NO native value. Use sendContractTx for proper Amoy gas fees (≥25 gwei).
-    const hash = await sendContractTx({
+    // ERC-20 create: NO native value. Override gas to satisfy Polygon Amoy ≥25 gwei minimum.
+    const hash = await writeContractAsync({
       abi: midpointEscrowAbi,
       address: escrowAddress as Address,
       functionName: "createProjectERC20",
       args: [usdcAddress, freelancer, parsedUsdcAmount, supportsProjectDescription ? sanitizedDescription : ""],
+      gas: GAS_OVERRIDE_AMOY,
       value: 0n,
-      skipRefresh: true,
+      maxPriorityFeePerGas: parseGwei("30"),
+      maxFeePerGas: parseGwei("40"),
     });
     console.log("Creation TX hash:", hash);
     const createReceipt = await publicClient!.waitForTransactionReceipt({ hash });
