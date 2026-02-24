@@ -953,8 +953,27 @@ export function useMidpoint() {
 
     await ensureUSDCApproval(parsedUsdcAmount, options?.onPhase);
 
+    // Wait 2 seconds for the Amoy RPC to catch up
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    if (!address || !publicClient) throw new Error("Wallet or public client unavailable");
+    console.log("Checking allowance on-chain before creation...");
+    const currentAllowance = (await publicClient.readContract({
+      address: usdcAddress as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [address, escrowAddress],
+    })) as bigint;
+    console.log("Current On-Chain Allowance:", currentAllowance.toString());
+
+    if (currentAllowance < parsedUsdcAmount) {
+      throw new Error(
+        `Allowance failed to update. Expected ${parsedUsdcAmount.toString()} but got ${currentAllowance.toString()}. Check if the USDC Token Address matches your wallet tokens!`
+      );
+    }
+
     options?.onPhase?.("awaitingCreation");
-    // ERC-20 create: NO native value. Override gas to satisfy Polygon Amoy ≥25 gwei minimum.
+    // ERC-20 create: NO native value. Token address MUST match approve (usdcAddress from NEXT_PUBLIC_USDC_AMOY_ADDRESS).
     const hash = await writeContractAsync({
       abi: midpointEscrowAbi,
       address: escrowAddress as Address,
