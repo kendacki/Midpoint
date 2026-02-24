@@ -1,3 +1,9 @@
+export function isUserRejection(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const e = error as { code?: number; name?: string; message?: string };
+  return e.code === 4001 || e.name === "UserRejectedRequestError" || /user rejected|user denied|rejected the request/i.test(String(e.message ?? ""));
+}
+
 /**
  * Maps raw blockchain/contract errors to user-friendly messages.
  */
