@@ -146,13 +146,15 @@ export default function ClientPage() {
       return;
     }
     try {
-      const usdcAddr = midpoint.usdcAddress;
+      const usdcAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` | undefined;
+      if (!usdcAddress || !String(usdcAddress).startsWith("0x")) {
+        throw new Error("Missing USDC Address in .env");
+      }
       const escrowAddr = midpoint.escrowAddress;
       const parsedUsdcAmount = parseUnits(usdcAmount || "0", 6);
 
       console.log("=== STRICT DATA PAYLOAD CHECK ===");
-      console.log("1. USDC Address from ENV (NEXT_PUBLIC_USDC_AMOY_ADDRESS):", process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS);
-      console.log("1b. USDC Address from ENV (NEXT_PUBLIC_USDC_ADDRESS):", process.env.NEXT_PUBLIC_USDC_ADDRESS);
+      console.log("1. USDC Address from ENV (NEXT_PUBLIC_USDC_ADDRESS):", usdcAddress);
       console.log("2. Escrow Contract Address:", escrowAddr);
       console.log("3. User Wallet Address:", midpoint.address);
       console.log("4. Parsed Amount (BigInt):", parsedUsdcAmount.toString());
@@ -162,10 +164,7 @@ export default function ClientPage() {
         console.error("Wagmi Connector not hydrated");
         throw new Error("Wallet connection is syncing. Please wait a moment or reconnect your wallet.");
       }
-      // 1. Pre-flight: validate env vars (NEXT_PUBLIC_USDC_AMOY_ADDRESS, NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS in .env.local)
-      if (!usdcAddr || !String(usdcAddr).startsWith("0x")) {
-        throw new Error("CRITICAL: USDC address is missing or invalid in environment variables. Add NEXT_PUBLIC_USDC_AMOY_ADDRESS to .env.local");
-      }
+      // Pre-flight: validate env vars
       if (!escrowAddr || !String(escrowAddr).startsWith("0x")) {
         throw new Error("CRITICAL: Escrow contract address is missing or invalid. Add NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS to .env.local");
       }

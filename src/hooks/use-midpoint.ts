@@ -62,9 +62,9 @@ export type CompletedOrderEntry = {
   token: Address;
 };
 
-// Set in .env.local: NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS, NEXT_PUBLIC_USDC_AMOY_ADDRESS
+// Set in .env.local: NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS, NEXT_PUBLIC_USDC_ADDRESS (whitelisted Amoy USDC)
 const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as `0x${string}` | undefined;
-const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as `0x${string}` | undefined;
+const usdcAddress = (process.env.NEXT_PUBLIC_USDC_ADDRESS ?? process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS) as `0x${string}` | undefined;
 const projectCreatedEventV1 = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount)"
 );
@@ -946,7 +946,7 @@ export function useMidpoint() {
     options?: { onPhase?: (phase: "awaitingApproval" | "awaitingCreation") => void }
   ) {
     if (!escrowAddress) throw new Error("Missing NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS");
-    if (!usdcAddress) throw new Error("Missing NEXT_PUBLIC_USDC_AMOY_ADDRESS");
+    if (!usdcAddress || !String(usdcAddress).startsWith("0x")) throw new Error("Missing USDC Address in .env (NEXT_PUBLIC_USDC_ADDRESS)");
     const sanitizedDescription = description.trim();
     if (!sanitizedDescription) throw new Error("Project description is required");
     const parsedUsdcAmount: bigint = parseUnits(amount, 6);
@@ -973,7 +973,7 @@ export function useMidpoint() {
     }
 
     options?.onPhase?.("awaitingCreation");
-    // ERC-20 create: NO native value. Token address MUST match approve (usdcAddress from NEXT_PUBLIC_USDC_AMOY_ADDRESS).
+    // ERC-20 create: NO native value. Token address MUST match approve (usdcAddress from NEXT_PUBLIC_USDC_ADDRESS).
     const hash = await writeContractAsync({
       abi: midpointEscrowAbi,
       address: escrowAddress as Address,
