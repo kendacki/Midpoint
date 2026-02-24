@@ -71,7 +71,7 @@ const projectCreatedEventV1 = parseAbiItem(
 const projectCreatedEventV2 = parseAbiItem(
   "event ProjectCreated(uint256 indexed projectId,address indexed client,address indexed freelancer,address token,uint256 amount,string description)"
 );
-const MIN_AMOY_PRIORITY_FEE = parseUnits("3", 9);
+const MIN_AMOY_PRIORITY_FEE = parseUnits("30", 9); // Polygon Amoy requires ≥25 gwei
 const workSubmittedEvent = parseAbiItem("event WorkSubmitted(uint256 indexed projectId,string ipfsCid,uint256 reviewDeadline)");
 const projectDisputedEvent = parseAbiItem("event ProjectDisputed(uint256 indexed projectId,uint256 disputeStartTime)");
 const disputeDecayEvent = parseAbiItem(
@@ -766,6 +766,26 @@ export function useMidpoint() {
   const GAS_LIMIT_ERC20 = 500_000n;
   const GAS_LIMIT_DEFAULT = 400_000n;
 
+  async function getAmoyFeeParams(): Promise<{ maxPriorityFeePerGas: bigint; maxFeePerGas: bigint } | { gasPrice: bigint }> {
+    if (!publicClient) throw new Error("Public client unavailable");
+    const feeEstimate = await publicClient.estimateFeesPerGas();
+    if (feeEstimate.maxFeePerGas || feeEstimate.maxPriorityFeePerGas) {
+      const estimatedPriority = feeEstimate.maxPriorityFeePerGas ?? MIN_AMOY_PRIORITY_FEE;
+      const maxPriorityFeePerGas =
+        estimatedPriority < MIN_AMOY_PRIORITY_FEE ? MIN_AMOY_PRIORITY_FEE : estimatedPriority > AMOY_FEE_CEILING ? AMOY_FEE_CEILING : estimatedPriority;
+      const estimatedMaxFee = feeEstimate.maxFeePerGas ?? maxPriorityFeePerGas * 2n;
+      const minSafeMaxFee = maxPriorityFeePerGas * 2n;
+      const normalizedMaxFee = estimatedMaxFee < minSafeMaxFee ? minSafeMaxFee : estimatedMaxFee;
+      const maxFeePerGas = normalizedMaxFee > AMOY_FEE_CEILING ? AMOY_FEE_CEILING : normalizedMaxFee;
+      return {
+        maxPriorityFeePerGas,
+        maxFeePerGas: maxFeePerGas > maxPriorityFeePerGas ? maxFeePerGas : maxPriorityFeePerGas * 2n,
+      };
+    }
+    if (feeEstimate.gasPrice) return { gasPrice: feeEstimate.gasPrice };
+    return { maxPriorityFeePerGas: MIN_AMOY_PRIORITY_FEE, maxFeePerGas: MIN_AMOY_PRIORITY_FEE * 2n };
+  }
+
   async function sendContractTx(args: {
     abi: readonly unknown[];
     address: Address;
@@ -775,31 +795,13 @@ export function useMidpoint() {
     skipRefresh?: boolean;
   }) {
     if (!publicClient) throw new Error("Public client unavailable");
-    const feeEstimate = await publicClient.estimateFeesPerGas();
     const txRequest: Record<string, unknown> = { ...args };
 
     const gasLimit = args.functionName === "createProjectERC20" ? GAS_LIMIT_ERC20 : GAS_LIMIT_DEFAULT;
     txRequest.gas = gasLimit;
 
-    if (feeEstimate.maxFeePerGas || feeEstimate.maxPriorityFeePerGas) {
-      const estimatedPriority = feeEstimate.maxPriorityFeePerGas ?? MIN_AMOY_PRIORITY_FEE;
-      const maxPriorityFeePerGas =
-        estimatedPriority < MIN_AMOY_PRIORITY_FEE
-          ? MIN_AMOY_PRIORITY_FEE
-          : estimatedPriority > AMOY_FEE_CEILING
-            ? AMOY_FEE_CEILING
-            : estimatedPriority;
-
-      const estimatedMaxFee = feeEstimate.maxFeePerGas ?? maxPriorityFeePerGas * 2n;
-      const minSafeMaxFee = maxPriorityFeePerGas * 2n;
-      const normalizedMaxFee = estimatedMaxFee < minSafeMaxFee ? minSafeMaxFee : estimatedMaxFee;
-      const maxFeePerGas = normalizedMaxFee > AMOY_FEE_CEILING ? AMOY_FEE_CEILING : normalizedMaxFee;
-
-      txRequest.maxPriorityFeePerGas = maxPriorityFeePerGas;
-      txRequest.maxFeePerGas = maxFeePerGas > maxPriorityFeePerGas ? maxFeePerGas : maxPriorityFeePerGas * 2n;
-    } else if (feeEstimate.gasPrice) {
-      txRequest.gasPrice = feeEstimate.gasPrice;
-    }
+    const feeParams = await getAmoyFeeParams();
+    Object.assign(txRequest, feeParams);
 
     const hash = await writeContractAsync(txRequest as never);
     // Strictly await receipt before returning - required for USDC approve-before-create flow.
@@ -907,6 +909,7 @@ export function useMidpoint() {
 
     onPhase?.("awaitingApproval");
 
+    const feeParams = await getAmoyFeeParams();
     if (allowance > 0n && allowance < parsedUsdcAmount) {
       const resetHash = await writeContractAsync({
         abi: erc20Abi,
@@ -914,6 +917,7 @@ export function useMidpoint() {
         functionName: "approve",
         args: [escrowAddress, 0n],
         gas: GAS_OVERRIDE_AMOY,
+        ...feeParams,
       });
       const resetReceipt = await publicClient.waitForTransactionReceipt({ hash: resetHash });
       if (resetReceipt.status !== "success") throw new Error("Allowance reset failed on-chain");
@@ -925,6 +929,7 @@ export function useMidpoint() {
       functionName: "approve",
       args: [escrowAddress, parsedUsdcAmount],
       gas: GAS_OVERRIDE_AMOY,
+      ...feeParams,
     });
     console.log("Approval TX hash:", approveHash);
     const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -946,14 +951,14 @@ export function useMidpoint() {
     await ensureUSDCApproval(parsedUsdcAmount, options?.onPhase);
 
     options?.onPhase?.("awaitingCreation");
-    // ERC-20 create: NO native value. Args: [token, freelancer, amount, description?]
-    const hash = await writeContractAsync({
+    // ERC-20 create: NO native value. Use sendContractTx for proper Amoy gas fees (≥25 gwei).
+    const hash = await sendContractTx({
       abi: midpointEscrowAbi,
       address: escrowAddress as Address,
       functionName: "createProjectERC20",
       args: [usdcAddress, freelancer, parsedUsdcAmount, supportsProjectDescription ? sanitizedDescription : ""],
-      gas: GAS_OVERRIDE_AMOY,
       value: 0n,
+      skipRefresh: true,
     });
     console.log("Creation TX hash:", hash);
     const createReceipt = await publicClient!.waitForTransactionReceipt({ hash });
