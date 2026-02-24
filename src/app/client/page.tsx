@@ -9,6 +9,7 @@ import { ProjectCard, ProjectCardSkeleton } from "@/components/midpoint/project-
 import { TransactionHistory } from "@/components/midpoint/transaction-history";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAccount } from "wagmi";
 import { useMidpoint, ProjectStatus } from "@/hooks/use-midpoint";
 import { isUserRejection, normalizeTxError } from "@/lib/error-messages";
 
@@ -17,6 +18,7 @@ type TxStatus = "idle" | "approving" | "creating" | "success" | "error";
 export default function ClientPage() {
   const midpoint = useMidpoint();
   const { toast } = useToast();
+  const { isConnected, connector } = useAccount();
   const [freelancer, setFreelancer] = useState("");
   const [description, setDescription] = useState("");
   const [nativeAmount, setNativeAmount] = useState("0.1");
@@ -93,6 +95,10 @@ export default function ClientPage() {
     }
     setPolTxStatus("creating");
     try {
+      if (!isConnected || !connector) {
+        console.error("Wagmi Connector not hydrated");
+        throw new Error("Wallet connection is syncing. Please wait a moment or reconnect your wallet.");
+      }
       await midpoint.createProjectNative(freelancer.trim() as Address, nativeAmount, description, {
         onPhase: () => setPolTxStatus("creating"),
       });
@@ -140,6 +146,10 @@ export default function ClientPage() {
       return;
     }
     try {
+      if (!isConnected || !connector) {
+        console.error("Wagmi Connector not hydrated");
+        throw new Error("Wallet connection is syncing. Please wait a moment or reconnect your wallet.");
+      }
       // 1. Pre-flight: validate env vars (NEXT_PUBLIC_USDC_AMOY_ADDRESS, NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS in .env.local)
       const usdcAddr = midpoint.usdcAddress;
       const escrowAddr = midpoint.escrowAddress;
@@ -258,7 +268,7 @@ export default function ClientPage() {
                         : "glass-button"
                   }`}
                   onClick={handleCreateNative}
-                  disabled={!midpoint.isConnected || (polTxStatus !== "idle" && polTxStatus !== "error") || !isAddress(freelancer.trim())}
+                  disabled={!isConnected || !connector || (polTxStatus !== "idle" && polTxStatus !== "error") || !isAddress(freelancer.trim())}
                 >
                   {getPolButtonText()}
                 </Button>
@@ -273,7 +283,7 @@ export default function ClientPage() {
                         : "glass-button"
                   }`}
                   onClick={handleCreateUSDC}
-                  disabled={!midpoint.isConnected || (usdcTxStatus !== "idle" && usdcTxStatus !== "error") || !isAddress(freelancer.trim())}
+                  disabled={!isConnected || !connector || (usdcTxStatus !== "idle" && usdcTxStatus !== "error") || !isAddress(freelancer.trim())}
                 >
                   {getUsdcButtonText()}
                 </Button>
