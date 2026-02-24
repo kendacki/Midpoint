@@ -8,6 +8,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract MidpointEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    /// @dev Polygon Amoy whitelisted USDC (faucet token). Only this token is accepted for createProjectERC20.
+    address public immutable allowedUsdcToken;
+
+    constructor(address _usdcToken) {
+        require(_usdcToken != address(0), "USDC token required");
+        allowedUsdcToken = _usdcToken;
+    }
+
     enum Status {
         AwaitingSubmission,
         UnderReview,
@@ -98,7 +106,7 @@ contract MidpointEscrow is ReentrancyGuard {
         nonReentrant
         returns (uint256 projectId)
     {
-        require(token != address(0), "Token required");
+        require(token == allowedUsdcToken, "Token not whitelisted");
         require(amount > 0, "Amount required");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         return _createProject(token, freelancer, amount, description);
