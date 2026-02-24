@@ -106,7 +106,7 @@ export function useMidpoint() {
   const { disconnect } = useDisconnect();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
-  const { writeContractAsync, isPending: isWriting } = useWriteContract();
+  const { writeContractAsync, isPending: isWriting, reset: resetWriteContract } = useWriteContract();
 
   const { data: scopedProjectIds = [], isLoading: isLoadingScopedProjects } = useQuery({
     queryKey: ["midpoint-scoped-project-ids", escrowAddress, address],
@@ -887,7 +887,9 @@ export function useMidpoint() {
     return hash;
   }
 
-  /** USDC on Polygon uses 6 decimals. Strict sequential: check allowance -> approve if needed -> wait for receipt. */
+  const GAS_OVERRIDE_AMOY = 500000n;
+
+  /** USDC on Polygon uses 6 decimals. Token contract = usdcAddress, Spender = escrowAddress. */
   async function ensureUSDCApproval(
     parsedUsdcAmount: bigint,
     onPhase?: (phase: "awaitingApproval" | "awaitingCreation") => void
@@ -904,14 +906,29 @@ export function useMidpoint() {
     if (allowance >= parsedUsdcAmount) return;
 
     onPhase?.("awaitingApproval");
+
+    if (allowance > 0n && allowance < parsedUsdcAmount) {
+      const resetHash = await writeContractAsync({
+        abi: erc20Abi,
+        address: usdcAddress as Address,
+        functionName: "approve",
+        args: [escrowAddress, 0n],
+        gas: GAS_OVERRIDE_AMOY,
+      });
+      const resetReceipt = await publicClient.waitForTransactionReceipt({ hash: resetHash });
+      if (resetReceipt.status !== "success") throw new Error("Allowance reset failed on-chain");
+    }
+
     const approveHash = await writeContractAsync({
       abi: erc20Abi,
       address: usdcAddress as Address,
       functionName: "approve",
       args: [escrowAddress, parsedUsdcAmount],
+      gas: GAS_OVERRIDE_AMOY,
     });
     console.log("Approval TX hash:", approveHash);
-    await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    if (approveReceipt.status !== "success") throw new Error("Approval failed on-chain");
   }
 
   async function createProjectUSDC(
@@ -929,14 +946,16 @@ export function useMidpoint() {
     await ensureUSDCApproval(parsedUsdcAmount, options?.onPhase);
 
     options?.onPhase?.("awaitingCreation");
-    const hash = await sendContractTx({
+    const hash = await writeContractAsync({
       abi: midpointEscrowAbi,
       address: escrowAddress as Address,
       functionName: "createProjectERC20",
       args: [usdcAddress, freelancer, parsedUsdcAmount, supportsProjectDescription ? sanitizedDescription : ""],
-      skipRefresh: true,
+      gas: GAS_OVERRIDE_AMOY,
     });
     console.log("Creation TX hash:", hash);
+    const createReceipt = await publicClient!.waitForTransactionReceipt({ hash });
+    if (createReceipt.status !== "success") throw new Error("Create escrow failed on-chain");
     await saveLocalDescriptionFromReceipt(hash, sanitizedDescription);
     await refresh();
     setTimeout(() => refresh(), 3000);
@@ -1048,6 +1067,7 @@ export function useMidpoint() {
     isWriting,
     connectWallet,
     disconnect,
+    resetWriteContract,
     escrowAddress,
     usdcAddress,
     isLoading:

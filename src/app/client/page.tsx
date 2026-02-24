@@ -43,10 +43,6 @@ export default function ClientPage() {
     (project) => effectiveStatus(project) === ProjectStatus.Resolved
   ).length;
 
-  const isPolBusy = polTxStatus === "creating";
-  const isUsdcBusy = usdcTxStatus === "approving" || usdcTxStatus === "creating";
-  const isAnyBusy = isPolBusy || isUsdcBusy;
-
   useEffect(() => {
     if (polTxStatus !== "success") return;
     const t = setTimeout(() => setPolTxStatus("idle"), 3000);
@@ -87,7 +83,8 @@ export default function ClientPage() {
     }
   }
 
-  async function handleCreateNative() {
+  async function handleCreateNative(e?: React.MouseEvent) {
+    e?.preventDefault?.();
     setError(null);
     setSuccessMessage(null);
     if (!isAddress(freelancer.trim())) {
@@ -127,11 +124,15 @@ export default function ClientPage() {
         setPolTxStatus("error");
       }
     } finally {
-      setPolTxStatus((prev) => (prev === "creating" ? "error" : prev));
+      setTimeout(() => {
+        if (midpoint.resetWriteContract) midpoint.resetWriteContract();
+        setPolTxStatus((prev) => (prev === "creating" ? "idle" : prev));
+      }, 500);
     }
   }
 
-  async function handleCreateUSDC() {
+  async function handleCreateUSDC(e?: React.MouseEvent) {
+    e?.preventDefault?.();
     setError(null);
     setSuccessMessage(null);
     if (!isAddress(freelancer.trim())) {
@@ -188,7 +189,10 @@ export default function ClientPage() {
       setUsdcTxStatus("error");
       toast(errMsg, "error");
     } finally {
-      setUsdcTxStatus((prev) => (prev === "approving" || prev === "creating" ? "error" : prev));
+      setTimeout(() => {
+        if (midpoint.resetWriteContract) midpoint.resetWriteContract();
+        setUsdcTxStatus((prev) => (prev === "approving" || prev === "creating" ? "idle" : prev));
+      }, 500);
     }
   }
 
@@ -231,6 +235,7 @@ export default function ClientPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input value={nativeAmount} onChange={(e) => setNativeAmount(e.target.value)} placeholder="POL amount" />
                 <Button
+                  type="button"
                   className={`!h-10 !rounded-xl ${
                     polTxStatus === "success" || polTxStatus === "creating"
                       ? "border border-emerald-300 bg-emerald-500/90 text-white"
@@ -239,12 +244,13 @@ export default function ClientPage() {
                         : "glass-button"
                   }`}
                   onClick={handleCreateNative}
-                  disabled={!midpoint.isConnected || isAnyBusy || midpoint.isWriting || !isAddress(freelancer.trim())}
+                  disabled={!midpoint.isConnected || (polTxStatus !== "idle" && polTxStatus !== "error") || !isAddress(freelancer.trim())}
                 >
                   {getPolButtonText()}
                 </Button>
                 <Input value={usdcAmount} onChange={(e) => setUsdcAmount(e.target.value)} placeholder="USDC amount" />
                 <Button
+                  type="button"
                   className={`!h-10 !rounded-xl ${
                     usdcTxStatus === "success" || usdcTxStatus === "approving" || usdcTxStatus === "creating"
                       ? "border border-emerald-300 bg-emerald-500/90 text-white"
@@ -253,7 +259,7 @@ export default function ClientPage() {
                         : "glass-button"
                   }`}
                   onClick={handleCreateUSDC}
-                  disabled={!midpoint.isConnected || isAnyBusy || midpoint.isWriting || !isAddress(freelancer.trim())}
+                  disabled={!midpoint.isConnected || (usdcTxStatus !== "idle" && usdcTxStatus !== "error") || !isAddress(freelancer.trim())}
                 >
                   {getUsdcButtonText()}
                 </Button>
