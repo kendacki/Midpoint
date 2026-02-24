@@ -28,7 +28,9 @@ Disputes include Midpoint's "decay pressure" model:
 - IPFS upload flow handled through backend API route.
 - Dispute settlement + timeout claim logic.
 
-## Multi-Tranche Milestone Smart Contracts
+## Next Steps & Roadmap 
+
+Multi-Tranche Milestone Smart ContractsL:
 
 The escrow handles single, lump-sum payouts upon project completion.
 Upgrade: Expanding the Solidity smart contract to support milestone-based funding. 
@@ -36,7 +38,8 @@ Clients will be able to lock the total project vault upfront,
 but release tokens (USDC/POL) in incremental percentages (e.g., 25%, 50%, 25%) 
 as the freelancer hits specific, predefined deliverables.
 
-## Decentralized Arbitration Protocol
+Decentralized Arbitration Protocol:
+
 Disputes are routed via an automated email ticketing
 system to a central admin.
 Upgrade: Replacing the centralized email routing with an on-chain
@@ -45,7 +48,8 @@ while the case is securely routed to a decentralized arbitration protocol
 (such as Kleros) or a multi-sig committee to ensure fair,
 trustless resolution without platform bias.
 
-## Gasless Transactions via Account Abstraction (ERC-4337)
+Gasless Transactions via Account Abstraction (ERC-4337):
+
 Freelancers and clients need native POL in their wallets to pay 
 for gas when interacting with the escrow or claiming funds.
 Upgrade: Integrating a paymaster (like Biconomy or Alchemy's Gas Manager) 
