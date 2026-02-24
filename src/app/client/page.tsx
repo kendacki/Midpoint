@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Address, isAddress } from "viem";
+import { Address, isAddress, parseUnits } from "viem";
 import { MotionDecor } from "@/components/midpoint/motion-decor";
 import { TopNav } from "@/components/midpoint/top-nav";
 import { useToast } from "@/lib/toast-context";
@@ -138,8 +138,28 @@ export default function ClientPage() {
       setError("Invalid freelancer wallet address.");
       return;
     }
-    setUsdcTxStatus("approving");
     try {
+      // 1. Pre-flight: validate env vars (NEXT_PUBLIC_USDC_AMOY_ADDRESS, NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS in .env.local)
+      const usdcAddr = midpoint.usdcAddress;
+      const escrowAddr = midpoint.escrowAddress;
+      if (!usdcAddr || !String(usdcAddr).startsWith("0x")) {
+        throw new Error("CRITICAL: USDC address is missing or invalid in environment variables. Add NEXT_PUBLIC_USDC_AMOY_ADDRESS to .env.local");
+      }
+      if (!escrowAddr || !String(escrowAddr).startsWith("0x")) {
+        throw new Error("CRITICAL: Escrow contract address is missing or invalid. Add NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS to .env.local");
+      }
+      // 2. Validate amount input
+      if (!usdcAmount || isNaN(Number(usdcAmount)) || Number(usdcAmount) <= 0) {
+        throw new Error("CRITICAL: Invalid amount entered.");
+      }
+      // 3. Safe parse (parseUnits crashes on bad data)
+      try {
+        parseUnits(usdcAmount, 6);
+      } catch (parseError) {
+        throw new Error(`CRITICAL: Failed to parse USDC amount. Input: ${usdcAmount}`);
+      }
+
+      setUsdcTxStatus("approving");
       await midpoint.createProjectUSDC(freelancer.trim() as Address, usdcAmount, description, {
         onPhase: (phase) => {
           setUsdcTxStatus(phase === "awaitingApproval" ? "approving" : "creating");
@@ -153,8 +173,9 @@ export default function ClientPage() {
       setTimeout(() => setSuccessMessage(null), 6000);
       void midpoint.refresh();
     } catch (err: unknown) {
+      console.error("ESCROW CRASH:", err);
       const e = err as { shortMessage?: string; message?: string };
-      console.error("TX Error (USDC):", e.shortMessage ?? e.message ?? err);
+      const errMsg = e.shortMessage ?? e.message ?? String(err);
       if (err && typeof err === "object" && "message" in err && String((err as { message?: unknown }).message).includes("429")) {
         console.error("RPC rate limit (429). Use private Alchemy/QuickNode RPC - see NEXT_PUBLIC_AMOY_RPC_URL.");
       }
@@ -163,15 +184,9 @@ export default function ClientPage() {
         toast("Transaction rejected by user", "error");
         return;
       }
-      try {
-        const msg = normalizeTxError(err);
-        setError(msg);
-        setUsdcTxStatus("error");
-        toast(msg, "error");
-      } catch (parseErr) {
-        console.error("Error parsing TX error:", parseErr);
-        setUsdcTxStatus("error");
-      }
+      setError(errMsg);
+      setUsdcTxStatus("error");
+      toast(errMsg, "error");
     } finally {
       setUsdcTxStatus((prev) => (prev === "approving" || prev === "creating" ? "error" : prev));
     }

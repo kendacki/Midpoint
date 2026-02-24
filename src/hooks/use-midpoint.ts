@@ -62,6 +62,7 @@ export type CompletedOrderEntry = {
   token: Address;
 };
 
+// Set in .env.local: NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS, NEXT_PUBLIC_USDC_AMOY_ADDRESS
 const escrowAddress = process.env.NEXT_PUBLIC_MIDPOINT_ESCROW_ADDRESS as `0x${string}` | undefined;
 const usdcAddress = process.env.NEXT_PUBLIC_USDC_AMOY_ADDRESS as `0x${string}` | undefined;
 const projectCreatedEventV1 = parseAbiItem(
